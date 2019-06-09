@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="Shift_JIS" ?>
+<!--
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+:: Copyright(c) 2019 BeeX Inc. All rights reserved.
+:: @auther:Naruhiro Ikeya
+::
+:: @name:SAPDailyBackup.xml
+:: @summary:Azure Backup Policy
+::
+:: @since:2019/06/09
+:: @version:1.0
+:: @see:
+::
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+-->
+
+<BackupPolicy>
+    <Name>SAPDailyBackup</Name>
+    <VM id="1">TOMSV004</VM>
+    <VM id="2">TOMSV005</VM>
+    <VM id="3">TOMSV006</VM>
+    <VM id="4">TOMSV007</VM>
+    <VM id="5">TOMSV008</VM>
+    <VM id="6">TOMSV009</VM>
+    <VM id="7">TOMSV010</VM>
+    <VM id="8">TOMSV011</VM>
+</BackupPolicy>

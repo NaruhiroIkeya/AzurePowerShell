@@ -1,35 +1,178 @@
+<################################################################################
+## Copyright(c) 2019 BeeX Inc. All rights reserved.
+## @auther#Naruhiro Ikeya
+##
+## @name:AzreBackupController.ps1
+## @summary:Azure Backup Recovery Point Retention Controller
+##
+## @since:2019/06/04
+## @version:1.0
+## @see:
+## @parameter
+##  1:Azure VM–¼
+##  2:Azure VMƒŠƒ\[ƒXƒOƒ‹[ƒv–¼
+##  3:•Û‘¶“ú”
+##
+## @return:0:Success 9:ƒGƒ‰[I—¹ / 99:Exception
+################################################################################>
 
+##########################
+# ƒpƒ‰ƒ[ƒ^İ’è
+##########################
+param (
+  [String]$AzureVMBackupPolicyName,
+  [Switch]$EnableAzureBakup,
+  [Switch]$DisableAzureBakup
+)
 
+##########################
+# ŒÅ’è’l 
+##########################
 
+Set-Variable -Name "ConstantPolicyName" -Value "CooperationJobSchedulerDummyPolicy" -Option Constant
+Set-Variable -Name "DisableHours" -Value 1 -Option Constant
+
+##########################
+# ƒpƒ‰ƒ[ƒ^ƒ`ƒFƒbƒN
+##########################
+if ($EnableAzureBakup -xor $DisableAzureBakup) {
+  if ($EnableAzureBakup) {
+    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure Backup‚ğ—LŒø‰»‚µ‚Ü‚·B")
+  } else {
+    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure Backup‚ğ–³Œø‰»‚µ‚Ü‚·B")
+  }
+} else {
+    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Syntax Error:Às‚É -EnableAzureBackup / -DisableAzureBackup ‚ğw’è‚µ‚Ä‚­‚¾‚³‚¢B")
+    exit 9
+}
+
+##########################
+# Œx‚Ì•\¦—}~
+##########################
+Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
+
+try {
   ##########################
-  # èªè¨¼æƒ…å ±å–å¾—
+  # ”FØî•ñæ“¾
   ##########################
   $SettingFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath etc -Resolve
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] è¨­å®šãƒ•ã‚¡ã‚¤ãƒ«Pathï¼š" + $SettingFilePath)
+  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] İ’èƒtƒ@ƒCƒ‹PathF" + $SettingFilePath)
   $SettingFile = "AzureCredential.xml"
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] è¨­å®šãƒ•ã‚¡ã‚¤ãƒ«åï¼š" + $SettingFile)
+  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] İ’èƒtƒ@ƒCƒ‹–¼F" + $SettingFile)
 
   $Config = [xml](Get-Content (Join-Path $SettingFilePath -ChildPath $SettingFile -Resolve))
   if(-not $Config) { 
+      Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Šù’è‚Ìƒtƒ@ƒCƒ‹‚©‚ç”FØî•ñ‚ª“Ç‚İ‚ß‚Ü‚¹‚ñ‚Å‚µ‚½B")
+      exit 9
+  } elseif (-not $Config.Configuration.Key) {
     ##########################
-    # Azureã¸ã®ãƒ­ã‚°ã‚¤ãƒ³
+    # Azure‚Ö‚ÌƒƒOƒCƒ“
     ##########################
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azureã¸ãƒ­ã‚°ã‚¤ãƒ³:é–‹å§‹")
+    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure‚ÖƒƒOƒCƒ“:ŠJn")
     $LoginInfo = Login-AzAccount -Tenant $Config.Configuration.TennantID -WarningAction Ignore
   } else {
     ##########################
-    # Azureã¸ã®ãƒ­ã‚°ã‚¤ãƒ³
+    # Azure‚Ö‚ÌƒƒOƒCƒ“
     ##########################
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] ã‚µãƒ¼ãƒ“ã‚¹ãƒ—ãƒªãƒ³ã‚·ãƒ‘ãƒ«ã‚’åˆ©ç”¨ã—Azureã¸ãƒ­ã‚°ã‚¤ãƒ³:é–‹å§‹")
-    $secpasswd = ConvertTo-SecureString $Config.Configuration.Key -AsPlainText -Force
-    $mycreds = New-Object System.Management.Automation.PSCredential ($Config.Configuration.ApplicationID, $secpasswd)
-    $LoginInfo = Login-AzAccount  -ServicePrincipal -Tenant $Config.Configuration.TennantID -Credential $mycreds  -WarningAction Ignore
-    if(-not $LoginInfo) { 
-      Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azureã¸ãƒ­ã‚°ã‚¤ãƒ³ã§ãã¾ã›ã‚“ã§ã—ãŸã€‚")
-      exit 9
+    $Config.Configuration.Key
+    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] ƒT[ƒrƒXƒvƒŠƒ“ƒVƒpƒ‹‚ğ—˜—p‚µAzure‚ÖƒƒOƒCƒ“:ŠJn")
+    $SecPasswd = ConvertTo-SecureString $Config.Configuration.Key -AsPlainText -Force
+    $MyCreds = New-Object System.Management.Automation.PSCredential ($Config.Configuration.ApplicationID, $secpasswd)
+    $LoginInfo = Login-AzAccount  -ServicePrincipal -Tenant $Config.Configuration.TennantID -Credential $MyCreds  -WarningAction Ignore
+  }
+  if(-not $LoginInfo) { 
+    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure‚ÖƒƒOƒCƒ“:¸”s")
+    exit 9
+  }
+  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure‚ÖƒƒOƒCƒ“:Š®—¹")
+
+  $RecoveryServicesVaults = Get-AzRecoveryServicesVault
+  foreach($Vault in $RecoveryServicesVaults) {
+    Set-AzRecoveryServicesVaultContext -Vault $Vault
+    if(-not $AzureVMBackupPolicyName) {
+      $AzureVMProtectionPolicies = Get-AzRecoveryServicesBackupProtectionPolicy -WorkloadType "AzureVM" 
+    } else {
+      $AzureVMProtectionPolicies = Get-AzRecoveryServicesBackupProtectionPolicy | ? { $_.Name -eq $AzureVMBackupPolicyName }
+      if((-not $AzureVMProtectionPolicies) -and $DisableAzureBakup) {
+        Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] w’è‚³‚ê‚½Backup Policy‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñB:$AzureVMBackupPolicyName")
+        exit 9
+      } elseif(-not $AzureVMProtectionPolicies) {
+        Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure‚ÖƒƒOƒCƒ“:Š®—¹")
+      }
+    }
+    $RegisterdVMsContainer = Get-AzRecoveryServicesBackupContainer -ContainerType "AzureVM" -Status "Registered"
+    if($EnableAzureBakup) {
+      Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure Backup—LŒø‰»ˆ—:ŠJn")
+      if(-not $AzureVMProtectionPolicy) {
+        ##########################
+        # Backup Policy‚ÌV‹Kì¬
+        ##########################
+        $SchedulePolicyObject = Get-AzRecoveryServicesBackupSchedulePolicyObject -WorkloadType "AzureVM"
+        if(-not $SchedulePolicyObject) { 
+          Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] SchedulePolicyObject‚Ì¶¬‚É¸”s‚µ‚Ü‚µ‚½B")
+          exit 9
+        }
+        $UtcTime = Get-Date -Date ((Get-Date).ToString("yyyy/MM/dd") + " 12:00:00")
+        $UtcTime = $UtcTime.ToUniversalTime()
+        $SchedulePolicyObject.ScheduleRunTimes[0] = $UtcTime
+        
+        $RetentionPolicyObject = Get-AzRecoveryServicesBackupRetentionPolicyObject -WorkloadType "AzureVM"
+        if(-not $RetentionPolicyObject) { 
+          Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] RetentionPolicyObject‚Ì¶¬‚É¸”s‚µ‚Ü‚µ‚½B")
+          exit 9
+        }
+        $RetentionPolicyObject.IsWeeklyScheduleEnabled = $false
+        $RetentionPolicyObject.IsMonthlyScheduleEnabled = $false
+        $RetentionPolicyObject.IsYearlyScheduleEnabled = $false
+        $RetentionPolicyObject.DailySchedule.DurationCountInDays = 7
+        $UtcTime = Get-Date -Date ((Get-Date).ToString("yyyy/MM/dd") + " 15:00:00")
+        $UtcTime = $UtcTime.ToUniversalTime()
+        $RetentionPolicyObject.DailySchedule.RetentionTimes[0] = $UtcTime
+
+        $AzureVMProtectionPolicy = New-AzRecoveryServicesBackupProtectionPolicy -Name $AzureVMBackupPolicyName -WorkloadType "AzureVM" -RetentionPolicy $RetentionPolicyObject -SchedulePolicy $SchedulePolicyObject
+        if(-not $AzureVMProtectionPolicy) { 
+          Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] ƒoƒbƒNƒAƒbƒvƒ|ƒŠƒV[‚Ìì¬‚É¸”s‚µ‚Ü‚µ‚½B")
+          exit 9
+        }
+      } else {
+
+
+      }
+      Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure Backup—LŒø‰»ˆ—:Š®—¹")
+    } else {
+      ############################
+      # Azure Backup(IaaS)‚Ì–³Œø‰»
+      ############################
+      Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure Backup–³Œø‰»ˆ—:ŠJn")
+      foreach($AzureVMProtectionPolicy in $AzureVMProtectionPolicies) {
+        $RetentionTime = $AzureVMProtectionPolicy.RetentionPolicy.DailySchedule.RetentionTimes[0].toString("HHmm")
+        $DisableTime = $AzureVMProtectionPolicy.RetentionPolicy.DailySchedule.RetentionTimes[0].AddHours(-1 * $DisableHours).toString("HHmm")
+        $Now = ((Get-Date).ToUniversalTime()).ToString("HHmm") 
+        Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $AzureVMProtectionPolicy.Name + "‚Ì–³Œø‰»ŠÔ‘Ñ‚Í " + $DisableTime + "`" + $RetentionTime + "(UTC)‚Å‚·B")
+        if($DisableTime -le $Now -and $Now -lt $RetentionTime) {
+          Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $AzureVMProtectionPolicy.Name + "‚Ì–³Œø‰»ˆ—‚ğŠJn‚µ‚Ü‚·B")
+          foreach($Container in $RegisterdVMsContainer) {
+            $BackupItem = Get-AzRecoveryServicesBackupItem -Container $Container -WorkloadType AzureVM 
+            if($BackupItem.ProtectionPolicyName -eq $AzureVMProtectionPolicy.Name) {
+              $DisabledItem = Disable-AzRecoveryServicesBackupProtection -Item $BackupItem -Force
+              Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $DisabledItem.WorkloadName + "‚ÌAzure BackupƒWƒ‡ƒu‚ğ–³Œø‰»‚µ‚Ü‚µ‚½B")
+              Continue
+            } elseif(-not $BackupItem.ProtectionPolicyName) {
+              Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $Container.FriendlyName  + "‚Í–³Œø‰»Ï‚İ‚Å‚·B")
+            } else {
+              Continue
+            }
+          }
+        } else {
+          Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $AzureVMProtectionPolicy.Name + "‚Í–³Œø‰»ˆ—‚Ì‘ÎÛŠO‚Å‚·B")
+        }
+      }
+      Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure Backup–³Œø‰»ˆ—:Š®—¹")
     }
   }
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azureã¸ãƒ­ã‚°ã‚¤ãƒ³:å®Œäº†")
-
-
-
+} catch {
+    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] ˆ—’†‚ÉƒGƒ‰[‚ª”­¶‚µ‚Ü‚µ‚½B")
+    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $error[0] | Format-List --DisplayError)
+    exit 99
+}
+exit 0
