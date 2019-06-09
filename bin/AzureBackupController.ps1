@@ -2,38 +2,34 @@
 
 
   ##########################
-  # ”FØî•ñæ“¾
+  # èªè¨¼æƒ…å ±å–å¾—
   ##########################
   $SettingFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath etc -Resolve
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] İ’èƒtƒ@ƒCƒ‹PathF" + $SettingFilePath)
+  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] è¨­å®šãƒ•ã‚¡ã‚¤ãƒ«Pathï¼š" + $SettingFilePath)
   $SettingFile = "AzureCredential.xml"
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] İ’èƒtƒ@ƒCƒ‹–¼F" + $SettingFile)
+  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] è¨­å®šãƒ•ã‚¡ã‚¤ãƒ«åï¼š" + $SettingFile)
 
   $Config = [xml](Get-Content (Join-Path $SettingFilePath -ChildPath $SettingFile -Resolve))
   if(-not $Config) { 
     ##########################
-    # Azure‚Ö‚ÌƒƒOƒCƒ“
+    # Azureã¸ã®ãƒ­ã‚°ã‚¤ãƒ³
     ##########################
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure‚ÖƒƒOƒCƒ“:ŠJn")
+    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azureã¸ãƒ­ã‚°ã‚¤ãƒ³:é–‹å§‹")
     $LoginInfo = Login-AzAccount -Tenant $Config.Configuration.TennantID -WarningAction Ignore
-    if(-not $LoginInfo) { 
-      Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure‚ÖƒƒOƒCƒ“‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½B")
-      exit 9
-    }
   } else {
     ##########################
-    # Azure‚Ö‚ÌƒƒOƒCƒ“
+    # Azureã¸ã®ãƒ­ã‚°ã‚¤ãƒ³
     ##########################
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] ƒT[ƒrƒXƒvƒŠƒ“ƒVƒpƒ‹‚ğ—˜—p‚µAzure‚ÖƒƒOƒCƒ“:ŠJn")
+    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] ã‚µãƒ¼ãƒ“ã‚¹ãƒ—ãƒªãƒ³ã‚·ãƒ‘ãƒ«ã‚’åˆ©ç”¨ã—Azureã¸ãƒ­ã‚°ã‚¤ãƒ³:é–‹å§‹")
     $secpasswd = ConvertTo-SecureString $Config.Configuration.Key -AsPlainText -Force
     $mycreds = New-Object System.Management.Automation.PSCredential ($Config.Configuration.ApplicationID, $secpasswd)
     $LoginInfo = Login-AzAccount  -ServicePrincipal -Tenant $Config.Configuration.TennantID -Credential $mycreds  -WarningAction Ignore
     if(-not $LoginInfo) { 
-      Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure‚ÖƒƒOƒCƒ“‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½B")
+      Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azureã¸ãƒ­ã‚°ã‚¤ãƒ³ã§ãã¾ã›ã‚“ã§ã—ãŸã€‚")
       exit 9
     }
   }
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure‚ÖƒƒOƒCƒ“:Š®—¹")
+  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azureã¸ãƒ­ã‚°ã‚¤ãƒ³:å®Œäº†")
 
 
 
