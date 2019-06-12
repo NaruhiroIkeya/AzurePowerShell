@@ -16,12 +16,28 @@
 
 <BackupPolicy>
     <Name>SAPDailyBackup</Name>
-    <VM id="1">TOMSV004</VM>
-    <VM id="2">TOMSV005</VM>
-    <VM id="3">TOMSV006</VM>
-    <VM id="4">TOMSV007</VM>
-    <VM id="5">TOMSV008</VM>
-    <VM id="6">TOMSV009</VM>
-    <VM id="7">TOMSV010</VM>
-    <VM id="8">TOMSV011</VM>
+    <VM id="1">
+        <Name>TOMSV004</Name>
+    </VM>
+    <VM id="2">
+        <Name>TOMSV005</Name>
+    </VM>
+    <VM id="3">
+        <Name>TOMSV006</Name>
+    </VM>
+    <VM id="4">
+        <Name>TOMSV007</Name>
+    </VM>
+    <VM id="5">
+        <Name>TOMSV008</Name>
+    </VM>
+    <VM id="6">
+        <Name>TOMSV009</Name>
+    </VM>
+    <VM id="7">
+        <Name>TOMSV010</Name>
+    </VM>
+    <VM id="8">
+        <Name>TOMSV011</Name>
+    </VM>
 </BackupPolicy>

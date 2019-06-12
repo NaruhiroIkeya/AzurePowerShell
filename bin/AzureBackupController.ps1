@@ -96,10 +96,11 @@ try {
       if((-not $AzureVMProtectionPolicies) -and $DisableAzureBakup) {
         Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] 指定されたBackup Policyが見つかりません。:$AzureVMBackupPolicyName")
         exit 9
-      } elseif(-not $AzureVMProtectionPolicies) {
-        Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azureへログイン:完了")
+      } elseif((-not $AzureVMProtectionPolicies) -and $EnableAzureBakup) {
+        Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] 指定されたポリシーを新規作成します。:$AzureVMBackupPolicyName")
       }
     }
+
     $RegisterdVMsContainer = Get-AzRecoveryServicesBackupContainer -ContainerType "AzureVM" -Status "Registered"
     if($EnableAzureBakup) {
       Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure Backup有効化処理:開始")
@@ -134,9 +135,46 @@ try {
           Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] バックアップポリシーの作成に失敗しました。")
           exit 9
         }
-      } else {
-
-
+      } 
+      ############################
+      # Azure Backup(IaaS)の有効化
+      ############################
+      foreach($AzureVMProtectionPolicy in $AzureVMProtectionPolicies) {
+        $RetentionTime = $AzureVMProtectionPolicy.RetentionPolicy.DailySchedule.RetentionTimes[0].toString("HHmm")
+        $Now = ((Get-Date).ToUniversalTime()).ToString("HHmm") 
+        Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $AzureVMProtectionPolicy.Name + "の有効化時間帯は " + $RetentionTime + "～(UTC)です。")
+        if($Now -gt $RetentionTime) {
+          Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $AzureVMProtectionPolicy.Name + "の有効化処理を開始します。")
+        
+          $SettingFile = $AzureVMProtectionPolicy.Name + ".xml"
+          Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Backup Policyファイル名：" + $SettingFile)
+          if(-not (Test-Path(Join-Path $SettingFilePath -ChildPath $SettingFile))) {
+            Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Backup Policyファイルが存在しません。")
+            break
+          }
+          $BackupPolicyConfig = [xml](Get-Content (Join-Path $SettingFilePath -ChildPath $SettingFile -Resolve))
+          if(-not $BackupPolicyConfig) { 
+            Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] 既定のファイルから設定情報が読み込めませんでした。")
+            exit 9
+          } 
+          foreach($Container in $RegisterdVMsContainer) {
+            $BackupItem = Get-AzRecoveryServicesBackupItem -Container $Container -WorkloadType AzureVM 
+            foreach($AzureVM in $BackupPolicyConfig.BackupPolicy.VM) {
+              if($BackupItem.ProtectionPolicyName) {
+                Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $Container.FriendlyName + "は有効化済です。")
+                break
+              } elseif($Container.FriendlyName -eq $AzureVM.Name) {
+                $EnabledItem = Enable-AzRecoveryServicesBackupProtection -Item $BackupItem -Policy $AzureVMProtectionPolicy
+                Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $EnabledItem.WorkloadName + "のAzure Backupジョブを有効化しました。")
+                break
+              } else {
+                Continue
+              }
+            }
+          }
+        } else {
+          Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $AzureVMProtectionPolicy.Name + "は有効化処理の対象外です。")
+        }
       }
       Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure Backup有効化処理:完了")
     } else {
