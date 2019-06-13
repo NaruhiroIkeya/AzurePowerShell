@@ -39,8 +39,8 @@ Class AzureLogonFunction {
     ##########################
     # 認証情報取得
     ##########################
-    $this.log.info("設定ファイルPath：" + (Split-Path $this.ConfigPath -Parent))
-    $this.log.info("設定ファイル名：" + (Get-ChildItem $this.ConfigPath).BaseName)
+    $this.log.info("認証情報ファイルパス：" + (Split-Path $this.ConfigPath -Parent))
+    $this.log.info("認証情報ファイル名：" + (Get-ChildItem $this.ConfigPath).Name)
     $this.ConfigInfo = [xml](Get-Content $this.ConfigPath)
     if(-not $this.ConfigInfo) { 
       $this.log.error("既定のファイルから認証情報が読み込めませんでした。")

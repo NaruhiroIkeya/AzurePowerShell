@@ -66,11 +66,15 @@ if ($EnableAzureBakup -xor $DisableAzureBakup) {
 Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
 
 try {
+  ##########################
+  # AzureÉçÉOÉIÉìèàóù
+  ##########################
   $SettingFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath etc -Resolve
   $SettingFile = "AzureCredential.xml"
-  $Connect = New-Object AzureLogonFunction("C:\Users\naruhiro.ikeya\Documents\GitHub\AzurePowerShell\etc\AzureCredential.xml")
-  if($Connect.Initialize($Log)) { if(-not $Connect.Logon()) { exit 9 } }
-
+  $SettingFileFull = $SettingFilePath + "\" + $SettingFile 
+  $Connect = New-Object AzureLogonFunction($SettingFileFull)
+  if($Connect.Initialize($Log)) { if(-not $Connect.Logon()) { exit 9 } } else { exit 9 }
+  
   $RecoveryServicesVaults = Get-AzRecoveryServicesVault
   foreach($Vault in $RecoveryServicesVaults) {
     Set-AzRecoveryServicesVaultContext -Vault $Vault
@@ -198,5 +202,4 @@ try {
     $Log.Info($("" + $error[0] | Format-List --DisplayError))
     exit 99
 }
-
 exit 0
