@@ -1,27 +1,27 @@
-ï»¿<################################################################################
+<################################################################################
 ## Copyright(c) 2019 BeeX Inc. All rights reserved.
 ## @auther#Naruhiro Ikeya
 ##
 ## @name:ExecAzureBackupJob.ps1
-## @summary:Azureãƒãƒƒã‚¯ã‚¢ãƒƒãƒ—å®Ÿè¡Œæœ¬ä½“
+## @summary:AzureƒoƒbƒNƒAƒbƒvÀs–{‘Ì
 ##
 ## @since:2019/01/28
 ## @version:1.0
 ## @see:
 ## @parameter
-##  1:AzureVMå
-##  2:Recovery Serviceã‚³ãƒ³ãƒ†ãƒŠãƒ¼å
-##  3:Azure Backupã‚¸ãƒ§ãƒ–ãƒãƒ¼ãƒªãƒ³ã‚°é–“éš”ï¼ˆç§’ï¼‰
+##  1:AzureVM–¼
+##  2:Recovery ServiceƒRƒ“ƒeƒi[–¼
+##  3:Azure BackupƒWƒ‡ƒuƒ|[ƒŠƒ“ƒOŠÔŠui•bj
 ##
 ## @return:0:Success 
-##         1:å…¥åŠ›ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ã‚¨ãƒ©ãƒ¼
-##         2:Azure Backupã‚¸ãƒ§ãƒ–ç›£è¦–ä¸­æ–­ï¼ˆTake Snapshotå®Œäº†ï¼‰
-##         9:Azure Backupå®Ÿè¡Œã‚¨ãƒ©ãƒ¼
+##         1:“ü—Íƒpƒ‰ƒ[ƒ^ƒGƒ‰[
+##         2:Azure BackupƒWƒ‡ƒuŠÄ‹’†’fiTake SnapshotŠ®—¹j
+##         9:Azure BackupÀsƒGƒ‰[
 ##         99:Exception
 ################################################################################>
 
 ##########################
-# ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿è¨­å®š
+# ƒpƒ‰ƒ[ƒ^İ’è
 ##########################
 param (
   [parameter(mandatory=$true)][string]$AzureVMName,
@@ -32,21 +32,21 @@ param (
 )
 
 ##########################
-# èªè¨¼æƒ…å ±è¨­å®š
+# ”FØî•ñİ’è
 ##########################
 $TennantID="e2fb1fde-e67c-4a07-8478-5ab2b9a0577f"
 $Key="I9UCoQXrv/G/EqC93RC7as8eyWARVd77UUC/fxRdGTw="
 $ApplicationID="1cb16aa7-59a6-4d8e-89ef-3b896d9f1718"
 
 ##########################
-# ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ãƒã‚§ãƒƒã‚¯
+# ƒpƒ‰ƒ[ƒ^ƒ`ƒFƒbƒN
 ##########################
 if($JobTimeout -le 0) {
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] ãƒãƒ¼ãƒªãƒ³ã‚°é–“éš”ï¼ˆç§’ï¼‰ã¯1ä»¥ä¸Šã‚’è¨­å®šã—ã¦ãã ã•ã„ã€‚")
+  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] ƒ|[ƒŠƒ“ƒOŠÔŠui•bj‚Í1ˆÈã‚ğİ’è‚µ‚Ä‚­‚¾‚³‚¢B")
   exit 1
 }
 if($AddDays -le 0) {
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] ãƒãƒƒã‚¯ã‚¢ãƒƒãƒ—ä¿æŒæ—¥æ•°ã¯1ä»¥ä¸Šã‚’è¨­å®šã—ã¦ãã ã•ã„ã€‚")
+  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] ƒoƒbƒNƒAƒbƒv•Û“ú”‚Í1ˆÈã‚ğİ’è‚µ‚Ä‚­‚¾‚³‚¢B")
   exit 1
 }
 
@@ -55,72 +55,72 @@ try {
 
   New-Variable -Name ReturnState -Value @("Take Snapshot","Transfer data to vault") -Option ReadOnly
 
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $AzureVMName + "ã®ãƒãƒƒã‚¯ã‚¢ãƒƒãƒ—ã‚’é–‹å§‹ã—ã¾ã™ã€‚")
+  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $AzureVMName + "‚ÌƒoƒbƒNƒAƒbƒv‚ğŠJn‚µ‚Ü‚·B")
   ##########################
-  # Azureã¸ã®ãƒ­ã‚°ã‚¤ãƒ³
+  # Azure‚Ö‚ÌƒƒOƒCƒ“
   ##########################
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] ã‚µãƒ¼ãƒ“ã‚¹ãƒ—ãƒªãƒ³ã‚·ãƒ‘ãƒ«ã‚’åˆ©ç”¨ã—Azureã¸ãƒ­ã‚°ã‚¤ãƒ³ã—ã¾ã™ã€‚")
+  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] ƒT[ƒrƒXƒvƒŠƒ“ƒVƒpƒ‹‚ğ—˜—p‚µAzure‚ÖƒƒOƒCƒ“‚µ‚Ü‚·B")
   $SecPasswd = ConvertTo-SecureString $Key -AsPlainText -Force
   $MyCreds = New-Object System.Management.Automation.PSCredential ($ApplicationID, $SecPasswd)
   $LoginInfo = Login-AzureRmAccount  -ServicePrincipal -Tenant $TennantID -Credential $MyCreds
   if(-not $LoginInfo) { 
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azureã¸ãƒ­ã‚°ã‚¤ãƒ³ã§ãã¾ã›ã‚“ã§ã—ãŸã€‚")
+    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure‚ÖƒƒOƒCƒ“‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½B")
     exit 9
   }
 
   #################################################
-  # Recovery Service ã‚³ãƒ³ãƒ†ãƒŠãƒ¼ã®ã‚³ãƒ³ãƒ†ã‚­ã‚¹ãƒˆã®è¨­å®š
+  # Recovery Service ƒRƒ“ƒeƒi[‚ÌƒRƒ“ƒeƒLƒXƒg‚Ìİ’è
   #################################################
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Recovery Services ã‚³ãƒ³ãƒ†ãƒŠãƒ¼ã‹ã‚‰æƒ…å ±ã‚’å–å¾—ã—ã¾ã™ã€‚")
+  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Recovery Services ƒRƒ“ƒeƒi[‚©‚çî•ñ‚ğæ“¾‚µ‚Ü‚·B")
   $RecoveryServiceVault = Get-AzureRmRecoveryServicesVault -Name $RecoveryServiceVaultName
   if(-not $RecoveryServiceVault) { 
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Recovery Serviceã‚³ãƒ³ãƒ†ãƒŠãƒ¼åãŒä¸æ­£ã§ã™ã€‚")
+    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Recovery ServiceƒRƒ“ƒeƒi[–¼‚ª•s³‚Å‚·B")
     exit 1
   }
   Set-AzureRmRecoveryServicesVaultContext -Vault $RecoveryServiceVault
 
   #################################################
-  # Azure Backup(IaaS) è¨­å®šæ¸ˆã¿ã‚µãƒ¼ãƒ æƒ…å ±å–å¾—
+  # Azure Backup(IaaS) İ’èÏ‚İƒT[ƒo î•ñæ“¾
   #################################################
   $BackupContainer = Get-AzureRmRecoveryServicesBackupContainer -ContainerType "AzureVM" -Status "Registered" -FriendlyName $AzureVMName
   if(-not $BackupContainer) { 
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Recovery Services ã‚³ãƒ³ãƒ†ãƒŠãƒ¼ã«ãƒãƒƒã‚¯ã‚¢ãƒƒãƒ—å¯¾è±¡ï¼ˆ" + $AzureVMName + "ï¼‰ãŒå­˜åœ¨ã—ã¾ã›ã‚“ã€‚")
+    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Recovery Services ƒRƒ“ƒeƒi[‚ÉƒoƒbƒNƒAƒbƒv‘ÎÛi" + $AzureVMName + "j‚ª‘¶İ‚µ‚Ü‚¹‚ñB")
     exit 1
   }
   $BackupItem = Get-AzureRmRecoveryServicesBackupItem -Container $BackupContainer -WorkloadType "AzureVM"
   ##########################################################################################################################
-  # -ExpiryDateTimeUTCã«ã¯ã€ãƒãƒƒã‚¯ã‚¢ãƒƒãƒ—ä¿ç®¡æœŸé–“ã‚’æŒ‡å®šï¼ˆã€ŒUTCã€ã‹ã¤ã‚¸ãƒ§ãƒ–å®Ÿè¡Œã‚¿ã‚¤ãƒŸãƒ³ã‚°ã‹ã‚‰ã€Œ1æ—¥å¾Œã€ï½ã€Œ99å¹´å¾Œã€ã§æŒ‡å®šï¼‰
+  # -ExpiryDateTimeUTC‚É‚ÍAƒoƒbƒNƒAƒbƒv•ÛŠÇŠúŠÔ‚ğw’èiuUTCv‚©‚ÂƒWƒ‡ƒuÀsƒ^ƒCƒ~ƒ“ƒO‚©‚çu1“úŒãv`u99”NŒãv‚Åw’èj
   ##########################################################################################################################
   $ExpiryDateUTC = [DateTime](Get-Date).ToUniversalTime().AddDays($AddDays).ToString("yyyy/MM/dd")
   #################################################
-  # Azure Backup(IaaS) å®Ÿè¡Œ
+  # Azure Backup(IaaS) Às
   #################################################
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure Backupã‚¸ãƒ§ãƒ–ã‚’å®Ÿè¡Œã—ã¾ã™ã€‚")
+  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure BackupƒWƒ‡ƒu‚ğÀs‚µ‚Ü‚·B")
   $Job = Backup-AzureRmRecoveryServicesBackupItem -Item $BackupItem -ExpiryDateTimeUTC $ExpiryDateUTC
   if($Job.Status -eq "Failed") {
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure Backupã‚¸ãƒ§ãƒ–ãŒã‚¨ãƒ©ãƒ¼çµ‚äº†ã—ã¾ã—ãŸã€‚")
-ã€€ã€€$Job | Format-List -DisplayError
+    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure BackupƒWƒ‡ƒu‚ªƒGƒ‰[I—¹‚µ‚Ü‚µ‚½B")
+@@$Job | Format-List -DisplayError
     exit 9
   }
 
   #################################################
-  # ã‚¸ãƒ§ãƒ–çµ‚äº†å¾…æ©Ÿ(Snapshotå–å¾—å¾…ã¡)
+  # ƒWƒ‡ƒuI—¹‘Ò‹@(Snapshotæ“¾‘Ò‚¿)
   #################################################
   $JobResult = Wait-AzureRmRecoveryServicesBackupJob -Job $Job -Timeout $JobTimeout
   While(($($JobResult.SubTasks | ? {$_.Name -eq $ReturnState[$ReturnMode]} | % {$_.Status}) -ne "Completed") -and ($JobResult.Status -ne "Failed" -and $JobResult.Status -ne "Cancelled")) {
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $ReturnState[$ReturnMode] + "ãƒ•ã‚§ãƒ¼ã‚ºã®å®Œäº†ã‚’å¾…æ©Ÿã—ã¦ã„ã¾ã™ã€‚")    
+    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $ReturnState[$ReturnMode] + "ƒtƒF[ƒY‚ÌŠ®—¹‚ğ‘Ò‹@‚µ‚Ä‚¢‚Ü‚·B")    
     $JobResult = Wait-AzureRmRecoveryServicesBackupJob -Job $Job -Timeout $JobTimeout
   }
   if($JobResult.Status -eq "InProgress") {
     $SubTasks = $(Get-AzureRmRecoveryServicesBackupJobDetails -JobId $JobResult.JobId).SubTasks
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure Backupã‚¸ãƒ§ãƒ–ç›£è¦–ã‚’ä¸­æ–­ã—ã¾ã™ã€‚Job ID=" +  $JobResult.JobId)
+    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure BackupƒWƒ‡ƒuŠÄ‹‚ğ’†’f‚µ‚Ü‚·BJob ID=" +  $JobResult.JobId)
     Foreach($SubTask in $SubTasks) {
       Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $SubTask.Name + " " +  $SubTask.Status)
     }
     exit 2
   } elseif($JobResult.Status -eq "Cancelled") {
     $SubTasks = $(Get-AzureRmRecoveryServicesBackupJobDetails -JobId $JobResult.JobId).SubTasks
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure Backupã‚¸ãƒ§ãƒ–ãŒã‚­ãƒ£ãƒ³ã‚»ãƒ«ã•ã‚Œã¾ã—ãŸã€‚Job ID=" +  $JobResult.JobId)
+    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure BackupƒWƒ‡ƒu‚ªƒLƒƒƒ“ƒZƒ‹‚³‚ê‚Ü‚µ‚½BJob ID=" +  $JobResult.JobId)
     Foreach($SubTask in $SubTasks) {
       Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $SubTask.Name + " " +  $SubTask.Status)
     }
@@ -128,17 +128,17 @@ try {
   }
 
   #################################################
-  # ã‚¨ãƒ©ãƒ¼ãƒãƒ³ãƒ‰ãƒªãƒ³ã‚°
+  # ƒGƒ‰[ƒnƒ“ƒhƒŠƒ“ƒO
   #################################################
   if($JobResult.Status -eq "Failed") {
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure Backupã‚¸ãƒ§ãƒ–ãŒã‚¨ãƒ©ãƒ¼çµ‚äº†ã—ã¾ã—ãŸã€‚")
-ã€€ã€€$JobResult | Format-List -DisplayError
+    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure BackupƒWƒ‡ƒu‚ªƒGƒ‰[I—¹‚µ‚Ü‚µ‚½B")
+@@$JobResult | Format-List -DisplayError
     exit 9
   } else {
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure Backupã‚¸ãƒ§ãƒ–ãŒå®Œäº†ã—ã¾ã—ãŸã€‚")
+    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure BackupƒWƒ‡ƒu‚ªŠ®—¹‚µ‚Ü‚µ‚½B")
   }
 } catch {
-    Write-Output("`r`n`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure Backupå®Ÿè¡Œä¸­ã«ã‚¨ãƒ©ãƒ¼ãŒç™ºç”Ÿã—ã¾ã—ãŸã€‚")
+    Write-Output("`r`n`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure BackupÀs’†‚ÉƒGƒ‰[‚ª”­¶‚µ‚Ü‚µ‚½B")
     Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $error[0] | Format-List --DisplayError)
     exit 99
 }
