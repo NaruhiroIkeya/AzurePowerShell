@@ -9,6 +9,9 @@
 
 $Logfile = "C:\Users\naruhiro.ikeya\Documents\GitHub\AzurePowerShell\log\sample2.log"
 
+$log = New-Object LogController
+$log.info("para none")
+
 $log = New-Object LogController($logfile,$true)
 $log.RotateLog(9)
 

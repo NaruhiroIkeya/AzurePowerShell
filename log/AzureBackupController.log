@@ -1,6 +1,0 @@
-[2019/06/13 19:19:28] INFO ログローテーション処理が完了しました。
-[2019/06/13 19:19:28] INFO Azure Backupを有効化します。
-[2019/06/13 19:19:28] INFO 認証情報ファイルパス：C:\Users\naruhiro.ikeya\Documents\GitHub\AzurePowerShell\etc
-[2019/06/13 19:19:28] INFO 認証情報ファイル名：AzureCredential.xml
-[2019/06/13 19:19:28] INFO Azureへログイン:開始
-[2019/06/13 19:19:31] ERROR Azureへログイン:失敗

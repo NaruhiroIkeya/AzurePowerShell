@@ -1,6 +1,0 @@
-[2019/06/13 17:05:32] INFO ログ削除処理を開始します。
-[2019/06/13 17:05:32] INFO ログ削除処理が完了しました。
-[2019/06/13 17:05:32] INFO 設定ファイルPath：C:\Users\naruhiro.ikeya\Documents\GitHub\AzurePowerShell\etc
-[2019/06/13 17:05:32] INFO 設定ファイル名：AzureCredential
-[2019/06/13 17:05:32] INFO Azureへログイン:開始
-[2019/06/13 17:05:44] INFO Azureへログイン:成功
