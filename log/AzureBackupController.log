@@ -1,0 +1,8 @@
+[2019/06/13 19:08:00] INFO ログローテーション処理が完了しました。
+[2019/06/13 19:08:00] INFO Azure Backupを有効化します。
+[2019/06/13 19:08:00] INFO 設定ファイルPath：C:\Users\naruhiro.ikeya\Documents\GitHub\AzurePowerShell\etc
+[2019/06/13 19:08:00] INFO 設定ファイル名：AzureCredential
+[2019/06/13 19:08:00] INFO Azureへログイン:開始
+[2019/06/13 19:08:13] INFO Azureへログイン:成功
+[2019/06/13 19:08:16] INFO Azure Backup有効化処理:開始
+[2019/06/13 19:08:18] ERROR バックアップポリシーの作成に失敗しました。

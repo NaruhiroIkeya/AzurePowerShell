@@ -24,40 +24,48 @@ Class LogController {
   [String] $FullPath
   [bool] $Generation
   [string]$LogDir
+  [hashtable] $Saverity = @{info = 1; warn = 2; err = 3}
+  [hashtable] $EventType = @{1 = "Information"; 2 = "Warning"; 3 = "Error"}
+  [hashtable] $LogType = @{1 = "INFO"; 2 = "WARN"; 3 = "ERROR"}
 
+  #####################################
+  # 標準出力のみ
+  #####################################
   LogController() {
     $this.EventLog = $false
     $this.StdOut = $true
   }
 
+  #####################################
+  # 標準出力 + イベントログ
+  #####################################
   LogController([bool] $EventLog, [string] $EventSource) {
     $this.EventLog = $EventLog
     $this.EventSource = $EventSource
     $this.StdOut = $true
 
+    #####################################
+    # EventLog書き込み用ソース情報登録
+    #####################################
     if ([System.Diagnostics.EventLog]::SourceExists($EventSource) -eq $false) {
         [System.Diagnostics.EventLog]::CreateEventSource($EventSource, "Application")
     }
   }
 
+  #####################################
+  # 標準出力 + ファイル出力
+  #####################################
   LogController([String] $FullPath, [bool]$Generation) {
     $this.FullPath = $FullPath
     $this.Generation = $Generation
+    $this.StdOut = $true
 
-    #####################################
-    # ログフォルダーが存在しなかったら作成
-    #####################################
-    $this.LogDir = Split-Path $FullPath -Parent
-    if(-not (Test-Path($this.LogDir))) {
-      New-Item $this.LogDir -Type Directory
-    }
-    if($Generation){
-      $this.FullPath = $FullPath + ".log"
-    } else {
-      $this.FullPath = $FullPath + $(Get-Date -UFormat "%Y%m%d%H%M") + ".log"
-    }
+    $this.InitializeLog()
   }
 
+  #####################################
+  # 標準出力 / ファイル出力 / イベントログ
+  #####################################
   LogController([String] $FullPath, [bool]$Generation, [bool] $EventLog, [string] $EventSource, $StdOut) {
     $this.FullPath = $FullPath
     $this.Generation = $Generation
@@ -66,69 +74,89 @@ Class LogController {
     $this.StdOut = $StdOut
 
     #####################################
-    # ログフォルダーが存在しなかったら作成
+    # EventLog書き込み用ソース情報登録
     #####################################
-    $this.LogDir = Split-Path $FullPath -Parent
-    if(-not (Test-Path($this.LogDir))) {
-      New-Item $this.LogDir -Type Directory
+    if ([System.Diagnostics.EventLog]::SourceExists($EventSource) -eq $false) {
+        [System.Diagnostics.EventLog]::CreateEventSource($EventSource, "Application")
     }
-    if($Generation){
-      $this.FullPath = $FullPath + ".log"
-    } else {
-      $this.FullPath = $FullPath + $(Get-Date -UFormat "%Y%m%d%H%M") + ".log"
-    }
+
+    $this.InitializeLog()
   }
    
   [void] info([string] $Message) {
-    if($this.StdOut) { [Console]::WriteLine("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] $message") }
-    if($this.EventLog) { Write-EventLog -LogName Application -EntryType Information -S $this.EventSource -EventId $this.EventID -Message $Message }
-    if($this.FullPath -ne $null) {
-      # ログ出力
-      Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] INFO $message") | Out-File -FilePath $this.FullPath -Encoding Default -append
-    }
+    $this.Log($message, $this.Saverity.info)
   }
 
   [void] warn([string] $Message) {
-    if($this.StdOut) { [Console]::WriteLine("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] $message") }
-    if($this.EventLog) { Write-EventLog -LogName Application -EntryType Warning -S $this.EventSource -EventId $this.EventID -Message $Message }
-    if($this.FullPath -ne $null) {
-      # ログ出力
-      Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] WARN $message") | Out-File -FilePath $this.FullPath -Encoding Default -append
-    }
+    $this.Log($message, $this.Saverity.warn)
   }
 
   [void] error([string] $Message) {
+    $this.Log($message, $this.Saverity.err)
+  }
+
+  hidden [void] Log([string]$Message, [int]$Saverity) {
     if($this.StdOut) { [Console]::WriteLine("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] $message") }
-    if($this.EventLog) { Write-EventLog -LogName Application -EntryType Error -S $this.EventSource -EventId $this.EventID -Message $Message }
+    if($this.EventLog) { Write-EventLog -LogName Application -EntryType $this.EventType[$Saverity] -S $this.EventSource -EventId $this.EventID -Message $Message }
     if($this.FullPath -ne $null) {
       # ログ出力
-      Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] ERROR $message") | Out-File -FilePath $this.FullPath -Encoding Default -append
+      Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $this.LogType[$Saverity]  + " " + $message) | Out-File -FilePath $this.FullPath -Encoding Default -append
     }
   }
 
+  #####################################
+  # ログファイル初期化
+  #####################################
+  hidden [void] InitializeLog() {
+    #####################################
+    # ログフォルダーが存在しなかったら作成
+    #####################################
+    $this.LogDir = Split-Path $this.FullPath -Parent
+    if(-not (Test-Path($this.LogDir))) {
+      New-Item $this.LogDir -Type Directory
+    }
+    if(-not $this.Generation) {
+      $this.FullPath = $($this.LogDir + "\" + (Get-ChildItem $this.FullPath).BaseName + "_" + (Get-Date -UFormat "%Y%m%d%H%M") + (Get-ChildItem $this.FullPath).Extension)
+    }
+  }
+
+  #####################################
+  # ログローテーション
+  #####################################
   [void] RotateLog([int]$Generation) {
+    $this.info("ログローテーション処理を開始します。")
     if(-not $this.Generation) { exit }
-    [Console]::WriteLine($this.FullPath + " AAA")
-    [Console]::WriteLine($Generation)
-    for($cntr = $Generation - 0; $cntr -ge 1; $cntr--) {
-    [Console]::WriteLine($cntr)
-      $LogFile = $this.FullPath + "_" + [string]$Generation + ".log"
-      [Console]::WriteLine($LogFile)
-      if(Test-Path($Logfile)) {
-        Remove-Item $LogFile -Force
-        Continue
+    foreach($cntr in ($Generation)..1) {
+      if($cntr -ne 1) {
+        $SourceFile = $($this.LogDir + "\" + (Get-ChildItem $this.FullPath).BaseName + "_" + $($cntr - 1) + (Get-ChildItem $this.FullPath).Extension)
+        $TargetFile = $($this.LogDir + "\" + (Get-ChildItem $this.FullPath).BaseName + "_" + $($cntr) + (Get-ChildItem $this.FullPath).Extension)
       } else {
-        $LogFile = $this.FullPath + [string]$cntr 
-        if(Test-Path($LogFile)){
-          Move-Item $LogFile $this.FullPath + ($cntr + 1)
-        }
+        $SourceFile = $($this.LogDir + "\" + (Get-ChildItem $this.FullPath).BaseName + (Get-ChildItem $this.FullPath).Extension)
+        $TargetFile = $($this.LogDir + "\" + (Get-ChildItem $this.FullPath).BaseName + "_" + $($cntr) + (Get-ChildItem $this.FullPath).Extension)
+      }
+      if((Test-Path($TargetFile)) -and ($cntr -eq $Generation)) {
+        Remove-Item $TargetFile -Force
+        Move-Item $SourceFile $TargetFile
+        Continue
+      } elseif((Test-Path($SourceFile)) -and (-not (Test-Path($TargetFile)))) {
+        Move-Item $SourceFile $TargetFile
       }
     }
+    $this.info("ログローテーション処理が完了しました。")
   }
 
+  #####################################
+  # 過去ログ削除
+  #####################################
   [void] DeleteLog([int] $Days) {
-      $Today = Get-Date
+    $this.info("ログ削除処理を開始します。")
+    $Today = Get-Date
+    Get-ChildItem -Path $this.LogDir | Where-Object {($_.Name -like $((Get-ChildItem $this.FullPath).BaseName)) -and ($_.Mode -eq "-a----") -and ($_.CreationTime -lt (Get-Date).AddDays(-1 * $Days))} | Remove-Item -Recurse -Force
+    $this.info("ログ削除処理が完了しました。")
   }
 
+  #####################################
+  # ログファイル名取得
+  #####################################
   [string] getLogInfo(){ return [Console]::WriteLine("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] ログファイル名:" + $this.FullPath) }
 }

@@ -1,0 +1,10 @@
+[2019/06/13 19:00:01] INFO ログローテーション処理が完了しました。
+[2019/06/13 19:00:01] INFO Azure Backupを有効化します。
+[2019/06/13 19:00:01] INFO 設定ファイルPath：C:\Users\naruhiro.ikeya\Documents\GitHub\AzurePowerShell\etc
+[2019/06/13 19:00:01] INFO 設定ファイル名：AzureCredential
+[2019/06/13 19:00:01] INFO Azureへログイン:開始
+[2019/06/13 19:00:13] INFO Azureへログイン:成功
+[2019/06/13 19:00:16] INFO Azure Backup有効化処理:開始
+[2019/06/13 19:00:17] INFO 処理中にエラーが発生しました。
+[2019/06/13 19:00:17] INFO Microsoft.PowerShell.Commands.Internal.Format.FormatEntryData
+[2019/06/13 19:01:50] INFO ログローテーション処理を開始します。

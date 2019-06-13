@@ -7,14 +7,20 @@
 [LogController]::new().warn("mogaaa  aasefq )() 99e")
 [LogController]::new().error("toge")
 
-$Logfile = Split-Path $myInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath log | Join-Path -ChildPath $myInvocation.MyCommand.Name
-$Logfile
-[LogController]::new($Logfile, $true).RotateLog(9)
-
+$Logfile = "C:\Users\naruhiro.ikeya\Documents\GitHub\AzurePowerShell\log\sample2.log"
 
 $log = New-Object LogController($logfile,$true)
-$log.getLogInfo()
-$log.info("ログローテーション処理を開始します。")
 $log.RotateLog(9)
-$log.info("ログローテーション処理が完了しました。")
+
+$log = New-Object LogController($logfile,$false)
+$log.DeleteLog(3)
+
+. .\AzureLogonFunction.ps1
+$connect = New-Object AzureLogonFunction("C:\Users\naruhiro.ikeya\Documents\GitHub\AzurePowerShell\etc\AzureCredential.xml")
+$connect.Initialize($log)
+if($connect.logon()) {
+ "OK"
+}
+
+
 
