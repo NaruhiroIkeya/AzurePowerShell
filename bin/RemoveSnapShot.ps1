@@ -31,6 +31,7 @@ param (
 ##########################
 # 固定値 
 ##########################
+$ErrorActionPreference = "Stop"
 
 ###############################
 # LogController オブジェクト生成
@@ -95,7 +96,7 @@ try {
   $Log.Info("期限切れSnapShot削除:完了")
 } catch {
     $Log.Error("管理ディスクのスナップショット削除中にエラーが発生しました。")
-    $Log.Error($($error[0] | Format-List -DisplayError))
+    $Log.Error($_.Exception)
     exit 99
 }
 exit 0

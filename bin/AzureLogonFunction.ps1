@@ -14,10 +14,10 @@
 ## @return:0:Success 9:エラー終了 / 99:Exception
 ################################################################################>
 
-
 ##########################
 # 警告の表示抑止
 ##########################
+$ErrorActionPreference = "Stop"
 Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
 
 Import-Module .\LogController.ps1
@@ -87,7 +87,7 @@ Class AzureLogonFunction {
       return $true
     } catch {
       $this.Log.Error("処理中にエラーが発生しました。")
-      $this.Log.Error($($Error[0] | Format-List -DisplayError))
+      $this.Log.Error($_.Exception)
       exit $false
     }
   }

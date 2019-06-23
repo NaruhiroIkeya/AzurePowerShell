@@ -43,6 +43,7 @@ param (
 ##########################
 # 固定値 
 ##########################
+$ErrorActionPreference = "Stop"
 New-Variable -Name ReturnState -Value @("Take Snapshot","Transfer data to vault") -Option ReadOnly
 
 ###############################
@@ -157,7 +158,7 @@ try {
   }
 } catch {
     $Log.Error("Azure Backup実行中にエラーが発生しました。")
-    $Log.Error($($error[0] | Format-List -DisplayError))
+    $Log.Error($_.Exception)
     exit 99
 }
 exit 0

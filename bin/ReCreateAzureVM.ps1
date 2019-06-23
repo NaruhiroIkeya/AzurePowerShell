@@ -261,7 +261,7 @@ try {
   }
 } catch {
     $Log.Error("仮想マシンの復元処理中にエラーが発生しました。")
-    $Log.Error($($error[0] | Format-List -DisplayError))
+    $Log.Error($_.Exception)
     exit 99
 }
 exit 0

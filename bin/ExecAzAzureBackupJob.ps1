@@ -35,6 +35,7 @@ param (
 ##########################
 # 固定値 
 ##########################
+$ErrorActionPreference = "Stop"
 
 ###############################
 # LogController オブジェクト生成
@@ -118,7 +119,7 @@ try {
   } 
 } catch {
     $log.Error("Azure Backup実行中にエラーが発生しました。")
-    $Log.Error($($error[0] | Format-List -DisplayError))
+    $Log.Error($_.Exception)
     exit 99
 }
 exit 0

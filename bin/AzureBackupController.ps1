@@ -34,6 +34,7 @@ param (
 ##########################
 # 固定値 
 ##########################
+$ErrorActionPreference = "Stop"
 Set-Variable -Name "ConstantPolicyName" -Value "CooperationJobSchedulerDummyPolicy" -Option Constant
 Set-Variable -Name "DisableHours" -Value 1 -Option Constant
 
@@ -248,7 +249,7 @@ try {
   }
 } catch {
     $Log.Error("処理中にエラーが発生しました。")
-    $Log.Error($($Error[0] | Format-List -DisplayError))
+    $Log.Error($_.Exception)
     exit 99
 }
 exit 0

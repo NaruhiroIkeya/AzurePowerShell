@@ -16,6 +16,7 @@
 ################################################################################>
 
 ##########################
+$ErrorActionPreference = "Stop"
 # パラメータ設定
 ##########################
 param (
@@ -222,7 +223,7 @@ try {
   }
 } catch {
     Write-Output("`r`n`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] 仮想マシンの復元処理中にエラーが発生しました。")
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $error[0] | Format-List --DisplayError)
+    $Log.Error($_.Exception)
     exit 99
 }
 exit 0
