@@ -5,7 +5,7 @@
 ## @name:AzureBackup.ps1
 ## @summary:ExecAzureBackupJob.ps1 Wrapper
 ##
-## @since:2019/01/17
+## @since:2019/06/24
 ## @version:1.0
 ## @see:
 ## @parameter
@@ -22,45 +22,62 @@
 param (
   [parameter(mandatory=$true)][string]$AzureVMName,
   [parameter(mandatory=$true)][string]$RecoveryServiceVaultName,
-  [parameter(mandatory=$true)][int64]$JobTimeout
+  [parameter(mandatory=$true)][int64]$JobTimeout,
+  [switch]$Stdout
 )
 
 ##########################
-# 認証情報設定
+# モジュールのロード
 ##########################
-$TennantID="e2fb1fde-e67c-4a07-8478-5ab2b9a0577f"
-$Key="I9UCoQXrv/G/EqC93RC7as8eyWARVd77UUC/fxRdGTw="
-$ApplicationID="1cb16aa7-59a6-4d8e-89ef-3b896d9f1718"
+. .\LogController.ps1
+. .\AzureLogonFunction.ps1
+
+##########################
+# 固定値 
+##########################
+
+###############################
+# LogController オブジェクト生成
+###############################
+if($Stdout) {
+  $Log = New-Object LogController
+} else {
+  $LogFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath log -Resolve
+  $LogFile = (Get-ChildItem $MyInvocation.MyCommand.Path).BaseName + ".log"
+  $Log = New-Object LogController($($LogFilePath + "\" + $LogFile), $false)
+}
 
 ##########################
 # パラメータチェック
 ##########################
 if($JobTimeout -lt 0) {
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] タイムアウト値は0以上を設定してください。`r`n")
+  $Log.Info("タイムアウト値は0以上を設定してください。`r`n")
   exit 1
 }
 
 try {
-
   ##########################
-  # Azureへのログイン
+  # Azureログオン処理
   ##########################
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] サービスプリンシパルを利用しAzureへログインします。")
-  $SecPasswd = ConvertTo-SecureString $Key -AsPlainText -Force
-  $MyCreds = New-Object System.Management.Automation.PSCredential ($ApplicationID, $SecPasswd)
-  $LoginInfo = Login-AzureRmAccount  -ServicePrincipal -Tenant $TennantID -Credential $MyCreds
-  if(-not $LoginInfo) { 
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azureへログインできませんでした。")
+  $SettingFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath etc -Resolve
+  $SettingFile = "AzureCredential.xml"
+  $SettingFileFull = $SettingFilePath + "\" + $SettingFile 
+  $Connect = New-Object AzureLogonFunction($SettingFileFull)
+  if($Connect.Initialize($Log)) {
+    if(-not $Connect.Logon()) {
+      exit 9
+    }
+  } else {
     exit 9
   }
 
   #################################################
   # Recovery Service コンテナーのコンテキストの設定
   #################################################
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Recovery Serviceコンテナーから情報を取得します。")
+  $Log.Info("Recovery Serviceコンテナーから情報を取得します。")
   $RecoveryServiceVault = Get-AzRecoveryServicesVault -Name $RecoveryServiceVaultName
   if(-not $RecoveryServiceVault) { 
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Recovery Serviceコンテナー名が不正です。")
+    $Log.Info("Recovery Serviceコンテナー名が不正です。")
     exit 1
   }
   Set-AzRecoveryServicesVaultContext -Vault $RecoveryServiceVault
@@ -68,10 +85,10 @@ try {
   #################################################
   # Azure Backup(IaaS) 設定済みサーバ 情報取得
   #################################################
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure Backupを実行します。")
+  $Log.Info("Azure Backupを実行します。")
   $BackupContainer = Get-AzRecoveryServicesBackupContainer -ContainerType "AzureVM" -Status "Registered" -FriendlyName $AzureVMName
   if(-not $BackupContainer) { 
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Recovery Serviceコンテナーにバックアップ対象が存在しません。")
+    $Log.Info("Recovery Serviceコンテナーにバックアップ対象が存在しません。")
     exit 1
   }
   $BackupItem = Get-AzRecoveryServicesBackupItem -Container $BackupContainer -WorkloadType "AzureVM"
@@ -86,15 +103,22 @@ try {
   # エラーハンドリング
   #################################################
   if($JobResult.Status -eq "Failed") {
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure Backupジョブがエラー終了しました。")
-　　$JobResult | Format-List -force 
-    exit 2
-  } else {
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure Backupジョブが完了しました。")
-  }
-} catch {
-    Write-Output("`r`n`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure Backup実行中にエラーが発生しました。")
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $error[0] | Format-List -force  )
+    $Log.Error("Azure Backupジョブがエラー終了しました。")
+    $Log.Error($($JobResult | Format-List -force))
     exit 9
+  } elseif($JobResult.Status -eq "InProgress") {
+    $Log.Warn("Azure Backup待ちがタイムアウトしました。")
+    $Log.Warn($($JobResult | Format-List -force))
+  } elseif($JobResult.Status -eq "Completed") {
+    $Log.Info("Azure Backupが完了しました。")
+    exit 0
+  } else {
+    $Log.Warn("Azure Backupが実行中です。")
+    $Log.Warn($($JobResult | Format-List -force))
+  } 
+} catch {
+    $log.Error("Azure Backup実行中にエラーが発生しました。")
+    $Log.Error($($error[0] | Format-List -force))
+    exit 99
 }
 exit 0

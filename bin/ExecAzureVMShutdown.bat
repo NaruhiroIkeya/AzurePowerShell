@@ -61,16 +61,17 @@ FORFILES /P %__LOGPATH__% /M *.log /D -%__LOG_CYCLE__% /C "CMD /C IF @isdir==FAL
 ::::::::::::::::::::::::::::::::::::::
 ::      スクリプト本体存在確認      ::
 ::::::::::::::::::::::::::::::::::::::
-IF NOT EXIST %~dpn0.ps1 (
-  CALL :__ECHO__ AzureVM停止スクリプトが存在しません。
+SET __PS_SCRIPT__=%~dp0AzureVMBootController.ps1
+IF NOT EXIST %__PS_SCRIPT__% (
+  CALL :__ECHO__ AzureVM起動スクリプトが存在しません。
   EXIT /B 1
 )
 
 ::::::::::::::::::::::::::::::::::
 ::      スクリプト本体実行      ::
 ::::::::::::::::::::::::::::::::::
-CALL :__ECHO__ AzureVM停止処理（%~n0.ps1）を開始します。
-powershell -NoProfile -inputformat none -command "%~dpn0.ps1 %__RESOURCEGROUPNAME__% %__VMNAME__%;exit $LASTEXITCODE" >>"%__LOGFILE__%"
+CALL :__ECHO__ AzureVM停止処理（%__PS_SCRIPT__%）を開始します。
+powershell -NoProfile -inputformat none -command "%__PS_SCRIPT__% -Shutdown -Stdout %__RESOURCEGROUPNAME__% %__VMNAME__%;exit $LASTEXITCODE" >>"%__LOGFILE__%"
 
 ::::::::::::::::::::::::::::::::::::::::::
 ::      スクリプト本体実行結果確認      ::

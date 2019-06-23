@@ -116,7 +116,7 @@ Class LogController {
       New-Item $this.LogDir -Type Directory
     }
     if(-not $this.Generation) {
-      $this.FullPath = $($this.LogDir + "\" + (Get-ChildItem $this.FullPath).BaseName + "_" + (Get-Date -UFormat "%Y%m%d%H%M") + (Get-ChildItem $this.FullPath).Extension)
+      $this.FullPath = $($this.LogDir + "\" + [System.IO.Path]::GetFileNameWithoutExtension($this.FullPath) + "_" + (Get-Date -UFormat "%Y%m%d%H%M") + [System.IO.Path]::GetExtension($this.FullPath))
     }
   }
 

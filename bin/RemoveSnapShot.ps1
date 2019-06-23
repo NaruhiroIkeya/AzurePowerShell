@@ -18,15 +18,30 @@
 # パラメータ設定
 ##########################
 param (
-  [parameter(mandatory=$true)][string]$AzureVMResourceGroupName
+  [string]$AzureVMResourceGroupName,
+  [switch]$Stdout
 )
 
 ##########################
-# 認証情報設定
+# モジュールのロード
 ##########################
-$TennantID="2ab73ef2-d066-4ce0-923e-94235755e2a2"
-$Key="AgndRfEIsRJ+8VjN0oQjy5T+vfnlcIQUUuYsXj780FM="
-$ApplicationID="ea70cdb1-df24-4928-9bf4-4ff6b6963463"
+. .\LogController.ps1
+. .\AzureLogonFunction.ps1
+
+##########################
+# 固定値 
+##########################
+
+###############################
+# LogController オブジェクト生成
+###############################
+if($Stdout) {
+  $Log = New-Object LogController
+} else {
+  $LogFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath log -Resolve
+  $LogFile = (Get-ChildItem $MyInvocation.MyCommand.Path).BaseName + ".log"
+  $Log = New-Object LogController($($LogFilePath + "\" + $LogFile), $false)
+}
 
 ##########################
 # 警告の表示抑止
@@ -37,39 +52,50 @@ try {
   Import-Module Az
 
   ##########################
-  # Azureへのログイン
+  # Azureログオン処理
   ##########################
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] サービスプリンシパルを利用しAzureへログインします。")
-  $SecPasswd = ConvertTo-SecureString $Key -AsPlainText -Force
-  $MyCreds = New-Object System.Management.Automation.PSCredential ($ApplicationID, $SecPasswd)
-  $LoginInfo = Login-AzAccount -ServicePrincipal -Tenant $TennantID -Credential $MyCreds -WarningAction Ignore
-  if(-not $LoginInfo) { 
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azureへログインできませんでした。")
+  $SettingFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath etc -Resolve
+  $SettingFile = "AzureCredential.xml"
+  $SettingFileFull = $SettingFilePath + "\" + $SettingFile 
+  $Connect = New-Object AzureLogonFunction($SettingFileFull)
+  if($Connect.Initialize($Log)) {
+    if(-not $Connect.Logon()) {
+      exit 9
+    }
+  } else {
     exit 9
   }
-
+ 
   ###################################
   # パラメータチェック
   ###################################
-  $Result = Get-AzResourceGroup -Name $AzureVMResourceGroupName
-  if(-not $Result) {
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] 指定されたリソースグループがありません:$AzureVMResourceGroupName")
-    exit 9
+  $RemoveSnapshots = $null
+  if(-not $AzureVMResourceGroupName) {
+    $RemoveSnapshots = Get-AzSnapshot | Where-Object { $_.Tags.ExpireDate -ne $null -and [DateTime]::Parse($_.Tags.ExpireDate) -lt (Get-Date) }
+  } else {
+    $ResourceGroups = Get-AzResourceGroup -Name $AzureVMResourceGroupName
+    if(-not $ResourceGroups) {
+      $Log.Info("指定されたリソースグループがありません:$AzureVMResourceGroupName")
+      exit 9
+    }
+    $RemoveSnapshots = Get-AzSnapshot -ResourceGroupName $ResourceGroups.ResourceGroupName | Where-Object { $_.Tags.ExpireDate -ne $null -and [DateTime]::Parse($_.Tags.ExpireDate) -lt (Get-Date) }
+  }
+  if(-not $RemoveSnapshots){
+      $Log.Info("削除対象のSnapshotがありません。")
+      exit 0
   }
 
   ###################################
   # AzureVM Snapshot世代管理
   ###################################
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] $AzureVMResourceGroupName 期限切れSnapShot削除:開始")
-  $RemoveSnapshots = Get-AzSnapshot -ResourceGroupName $AzureVMResourceGroupName | Where-Object { $_.Tags.ExpireDate -ne $null -and [DateTime]::Parse($_.Tags.ExpireDate) -lt (Get-Date) }
+  $Log.Info("期限切れSnapShot削除:開始")
   foreach ($Snapshot in $RemoveSnapshots) {
-    Remove-AzSnapshot -ResourceGroupName $Snapshot.ResourceGroupName -SnapshotName $Snapshot.Name -Force | % { Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $Snapshot.Name + " : " + $_.Status) }
+    Remove-AzSnapshot -ResourceGroupName $Snapshot.ResourceGroupName -SnapshotName $Snapshot.Name -Force | % { $Log.Info("期限切れSnapshot削除:" + $Snapshot.Name + " : " + $_.Status) }
   }
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] $AzureVMResourceGroupName 期限切れSnapShot削除:完了")
-
+  $Log.Info("期限切れSnapShot削除:完了")
 } catch {
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] 管理ディスクのスナップショット削除中にエラーが発生しました。")
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $error[0] | Format-List --DisplayError)
+    $Log.Error("管理ディスクのスナップショット削除中にエラーが発生しました。")
+    $Log.Error($($error[0] | Format-List --DisplayError))
     exit 99
 }
 exit 0

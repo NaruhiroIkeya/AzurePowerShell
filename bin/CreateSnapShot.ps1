@@ -5,7 +5,7 @@
 ## @name:CreateSnapshot.ps1
 ## @summary:Azure VMデータディスクのSnapshot
 ##
-## @since:2019/03/16
+## @since:2019/06/24
 ## @version:1.0
 ## @see:
 ## @parameter
@@ -23,14 +23,36 @@ param (
   [parameter(mandatory=$true)][string]$AzureVMName,
   [parameter(mandatory=$true)][string]$AzureVMResourceGroupName,
   [parameter(mandatory=$false)][string]$Luns="ALL",
-  [parameter(mandatory=$true)][int]$ExpireDays
+  [parameter(mandatory=$true)][int]$ExpireDays,
+  [switch]$Stdout
 )
+
+##########################
+# モジュールのロード
+##########################
+. .\LogController.ps1
+. .\AzureLogonFunction.ps1
+
+##########################
+# 固定値 
+##########################
+
+###############################
+# LogController オブジェクト生成
+###############################
+if($Stdout) {
+  $Log = New-Object LogController
+} else {
+  $LogFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath log -Resolve
+  $LogFile = (Get-ChildItem $MyInvocation.MyCommand.Path).BaseName + ".log"
+  $Log = New-Object LogController($($LogFilePath + "\" + $LogFile), $false)
+}
 
 ##########################
 # パラメータチェック
 ##########################
 if($ExpireDays -lt 1) {
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] 保持日数は1以上を設定してください。")
+  $Log.Info("保持日数は1以上を設定してください。")
   exit 1
 }
 
@@ -40,43 +62,44 @@ if($ExpireDays -lt 1) {
 Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
 
 try {
-  Import-Module Az
-
   ##########################
-  # Azureへのログイン
+  # Azureログオン処理
   ##########################
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] サービスプリンシパルを利用しAzureへログインします。")
-  $SecPasswd = ConvertTo-SecureString $Key -AsPlainText -Force
-  $MyCreds = New-Object System.Management.Automation.PSCredential ($ApplicationID, $SecPasswd)
-  $LoginInfo = Login-AzAccount -ServicePrincipal -Tenant $TennantID -Credential $MyCreds -WarningAction Ignore
-  if(-not $LoginInfo) { 
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azureへログインできませんでした。")
+  $SettingFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath etc -Resolve
+  $SettingFile = "AzureCredential.xml"
+  $SettingFileFull = $SettingFilePath + "\" + $SettingFile 
+  $Connect = New-Object AzureLogonFunction($SettingFileFull)
+  if($Connect.Initialize($Log)) {
+    if(-not $Connect.Logon()) {
+      exit 9
+    }
+  } else {
     exit 9
   }
-
+  
   ###################################
   # AzureVM 確認
   ###################################
   $SnapshotSuffix = "_Snapshot_" + (Get-Date).ToString("yyyyMMddHHmm")
   $AzureVMInfo = Get-AzVM -ResourceGroupName $AzureVMResourceGroupName -Name $AzureVMName
   if(-not $AzureVMInfo) {
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azure VMが見つかりません。")
+    $Log.Info("Azure VMが見つかりません。")
     exit 9
   }
 
   ###################################
   # AzureVM Snapshot作成
   ###################################
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] $AzureVMName SnapShot作成:開始")
+  $Log.Info("$AzureVMName SnapShot作成:開始")
   $CreateDate=(Get-Date).ToString("yyyy/MM/dd HH:mm")
   if($Luns -eq "ALL") {
-    $AzureVMInfo.StorageProfile.DataDisks | ForEach-Object { New-AzSnapshotConfig -SourceUri $_.ManagedDisk.Id -Location $AzureVMInfo.Location -Tag @{ SourceVMName=$AzureVMInfo.Name; SourceDiskName=$_.Name; SourceLun=[string]$_.Lun; CreateDate=$CreateDate; ExpireDate=(Get-Date).AddDays($ExpireDays).ToString("yyyy/MM/dd") } -CreateOption copy } | % { New-AzSnapshot -Snapshot $_ -SnapshotName ($_.Tags.SourceDiskName + $SnapshotSuffix) -ResourceGroupName $AzureVMInfo.ResourceGroupName } | % { Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $_.Name + " : " + $_.ProvisioningState) }
+    $AzureVMInfo.StorageProfile.DataDisks | ForEach-Object { New-AzSnapshotConfig -SourceUri $_.ManagedDisk.Id -Location $AzureVMInfo.Location -Tag @{ SourceVMName=$AzureVMInfo.Name; SourceDiskName=$_.Name; SourceLun=[string]$_.Lun; CreateDate=$CreateDate; ExpireDate=(Get-Date).AddDays($ExpireDays).ToString("yyyy/MM/dd") } -CreateOption copy } | % { New-AzSnapshot -Snapshot $_ -SnapshotName ($_.Tags.SourceDiskName + $SnapshotSuffix) -ResourceGroupName $AzureVMInfo.ResourceGroupName } | % { $Log.Info("" + $_.Name + " : " + $_.ProvisioningState) }
   } else {
     foreach($Lun in $($Luns -split ",")) {
-      $AzureVMInfo.StorageProfile.DataDisks | ? { $_.Lun -eq $Lun } | ForEach-Object { New-AzSnapshotConfig -SourceUri $_.ManagedDisk.Id -Location $AzureVMInfo.Location -Tag @{ SourceVMName=$AzureVMInfo.Name; SourceDiskName=$_.Name; SourceLun=[string]$_.Lun; CreateDate=$CreateDate; ExpireDate=(Get-Date).AddDays($ExpireDays).ToString("yyyy/MM/dd") } -CreateOption copy } | % { New-AzSnapshot -Snapshot $_ -SnapshotName ($_.Tags.SourceDiskName + $SnapshotSuffix) -ResourceGroupName $AzureVMInfo.ResourceGroupName } | % { Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $_.Name + " : " + $_.ProvisioningState) }
+      $AzureVMInfo.StorageProfile.DataDisks | ? { $_.Lun -eq $Lun } | ForEach-Object { New-AzSnapshotConfig -SourceUri $_.ManagedDisk.Id -Location $AzureVMInfo.Location -Tag @{ SourceVMName=$AzureVMInfo.Name; SourceDiskName=$_.Name; SourceLun=[string]$_.Lun; CreateDate=$CreateDate; ExpireDate=(Get-Date).AddDays($ExpireDays).ToString("yyyy/MM/dd") } -CreateOption copy } | % { New-AzSnapshot -Snapshot $_ -SnapshotName ($_.Tags.SourceDiskName + $SnapshotSuffix) -ResourceGroupName $AzureVMInfo.ResourceGroupName } | % { $Log.Info("" + $_.Name + " : " + $_.ProvisioningState) }
     }
   }
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] $AzureVMName SnapShot作成:完了")
+  $Log.Info("$AzureVMName SnapShot作成:完了")
 
   ########################################
   # AzureVM に付与されているタグを追加
@@ -97,10 +120,9 @@ try {
       }
     }
   }
-  
 } catch {
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] 管理ディスクのスナップショット作成中にエラーが発生しました。")
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $error[0] | Format-List --DisplayError)
+    $Log.Error("管理ディスクのスナップショット作成中にエラーが発生しました。")
+    $Log.Error($($error[0] | Format-List --DisplayError))
     exit 99
 }
 exit 0
