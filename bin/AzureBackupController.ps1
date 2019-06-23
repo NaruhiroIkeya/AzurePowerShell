@@ -248,7 +248,7 @@ try {
   }
 } catch {
     $Log.Error("ˆ—’†‚ÉƒGƒ‰[‚ª”­¶‚µ‚Ü‚µ‚½B")
-    $Log.Error($("" + $Error[0] | Format-List --DisplayError))
+    $Log.Error($($Error[0] | Format-List -DisplayError))
     exit 99
 }
 exit 0

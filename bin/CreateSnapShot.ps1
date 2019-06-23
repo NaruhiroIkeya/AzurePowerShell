@@ -122,7 +122,7 @@ try {
   }
 } catch {
     $Log.Error("管理ディスクのスナップショット作成中にエラーが発生しました。")
-    $Log.Error($($error[0] | Format-List --DisplayError))
+    $Log.Error($($error[0] | Format-List -DisplayError))
     exit 99
 }
 exit 0

@@ -87,7 +87,7 @@ Class AzureLogonFunction {
       return $true
     } catch {
       $this.Log.Error("ˆ—’†‚ÉƒGƒ‰[‚ª”­¶‚µ‚Ü‚µ‚½B")
-      $this.Log.Error($("" + $Error[0] | Format-List --DisplayError))
+      $this.Log.Error($($Error[0] | Format-List -DisplayError))
       exit $false
     }
   }

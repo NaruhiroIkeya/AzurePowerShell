@@ -91,8 +91,8 @@ try {
   $Log.Info("Recovery Services コンテナーから情報を取得します。")
   $RecoveryServiceVault = Get-AzRecoveryServicesVault -Name $RecoveryServiceVaultName
   if(-not $RecoveryServiceVault) { 
-    $Log.Info("Recovery Serviceコンテナー名が不正です。")
-    exit 1
+    $Log.Error("Recovery Serviceコンテナー名が不正です。")
+    exit 9
   }
   Set-AzRecoveryServicesVaultContext -Vault $RecoveryServiceVault
 
@@ -101,8 +101,8 @@ try {
   #################################################
   $BackupContainer = Get-AzRecoveryServicesBackupContainer -ContainerType "AzureVM" -Status "Registered" -FriendlyName $AzureVMName
   if(-not $BackupContainer) { 
-    $Log.Info("Recovery Services コンテナーにバックアップ対象（" + $AzureVMName + "）が存在しません。")
-    exit 1
+    $Log.Error("Recovery Services コンテナーにバックアップ対象（" + $AzureVMName + "）が存在しません。")
+    exit 9
   }
   $BackupItem = Get-AzRecoveryServicesBackupItem -Container $BackupContainer -WorkloadType "AzureVM"
   ##########################################################################################################################
@@ -148,8 +148,8 @@ try {
   # エラーハンドリング
   #################################################
   if($JobResult.Status -eq "Failed") {
-    $Log.Info("Azure Backupジョブがエラー終了しました。")
-　　$JobResult | Format-List -DisplayError
+    $Log.Error("Azure Backupジョブがエラー終了しました。")
+    $Log.Error($($JobResult | Format-List -DisplayError))
     exit 9
   } else {
     $Log.Info("Azure Backupジョブが完了しました。")
@@ -157,7 +157,7 @@ try {
   }
 } catch {
     $Log.Error("Azure Backup実行中にエラーが発生しました。")
-    $Log.Error($($error[0] | Format-List --DisplayError))
+    $Log.Error($($error[0] | Format-List -DisplayError))
     exit 99
 }
 exit 0

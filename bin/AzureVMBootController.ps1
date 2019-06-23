@@ -76,7 +76,7 @@ try {
   ############################
   $ResourceGroup = Get-AzResourceGroup | Where-Object{$_.ResourceGroupName -eq $ResourceGroupName}
   if(-not $ResourceGroup) { 
-    $Log.Info("ResourceGroup名が不正です。" + $ResourceGroupName)
+    $Log.Error("ResourceGroup名が不正です。" + $ResourceGroupName)
     exit 9
   }
 
@@ -85,7 +85,7 @@ try {
   ############################
   $AzureVM = Get-AzVM -ResourceGroupName $ResourceGroupName | Where-Object{$_.Name -eq $AzureVMName}
   if(-not $AzureVM) { 
-    $Log.Info("AzureVM名が不正です。" + $AzureVMName)
+    $Log.Error("AzureVM名が不正です。" + $AzureVMName)
     exit 9
   }
  

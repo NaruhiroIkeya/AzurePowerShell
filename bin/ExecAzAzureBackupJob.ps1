@@ -104,21 +104,21 @@ try {
   #################################################
   if($JobResult.Status -eq "Failed") {
     $Log.Error("Azure Backupジョブがエラー終了しました。")
-    $Log.Error($($JobResult | Format-List -force))
+    $Log.Error($($JobResult | Format-List -DisplayError))
     exit 9
   } elseif($JobResult.Status -eq "InProgress") {
     $Log.Warn("Azure Backup待ちがタイムアウトしました。")
-    $Log.Warn($($JobResult | Format-List -force))
+    $Log.Warn($($JobResult | Format-List -DisplayError))
   } elseif($JobResult.Status -eq "Completed") {
     $Log.Info("Azure Backupが完了しました。")
     exit 0
   } else {
     $Log.Warn("Azure Backupが実行中です。")
-    $Log.Warn($($JobResult | Format-List -force))
+    $Log.Warn($($JobResult | Format-List -DisplayError))
   } 
 } catch {
     $log.Error("Azure Backup実行中にエラーが発生しました。")
-    $Log.Error($($error[0] | Format-List -force))
+    $Log.Error($($error[0] | Format-List -DisplayError))
     exit 99
 }
 exit 0

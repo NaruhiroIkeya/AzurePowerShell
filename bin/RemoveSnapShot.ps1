@@ -95,7 +95,7 @@ try {
   $Log.Info("期限切れSnapShot削除:完了")
 } catch {
     $Log.Error("管理ディスクのスナップショット削除中にエラーが発生しました。")
-    $Log.Error($($error[0] | Format-List --DisplayError))
+    $Log.Error($($error[0] | Format-List -DisplayError))
     exit 99
 }
 exit 0

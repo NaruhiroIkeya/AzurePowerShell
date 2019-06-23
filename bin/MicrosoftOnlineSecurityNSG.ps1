@@ -82,7 +82,7 @@ try {
   #################################################
 } catch {
   Write-Output("`r`n`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Network Security Groupの更新処理中にエラーが発生しました。")
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $error[0] | Format-List --DisplayError)
+  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $error[0] | Format-List -DisplayError)
   exit 99
 }
 exit 0

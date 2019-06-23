@@ -1,0 +1,22 @@
+[2019/06/23 15:34:09] Azure Backup監視処理（MonitoringAzureBackupJob.ps1）を開始します。 
+[2019/06/23 15:34:09] 認証情報ファイルパス：C:\Users\naruhiro.ikeya\Documents\GitHub\AzurePowerShell\etc
+[2019/06/23 15:34:09] 認証情報ファイル名：AzureCredential.xml
+[2019/06/23 15:34:09] Azureへログイン:開始
+[2019/06/23 15:34:25] Azureへログイン:成功
+[2019/06/23 15:34:25] testvmのバックアップを監視します。
+[2019/06/23 15:34:25] Recovery Services コンテナーから情報を取得します。
+[2019/06/23 15:36:34] Transfer data to vaultフェーズの完了を待機しています。
+[2019/06/23 15:38:36] Transfer data to vaultフェーズの完了を待機しています。
+[2019/06/23 15:40:40] Transfer data to vaultフェーズの完了を待機しています。
+[2019/06/23 15:42:43] Transfer data to vaultフェーズの完了を待機しています。
+[2019/06/23 15:44:46] Transfer data to vaultフェーズの完了を待機しています。
+[2019/06/23 15:46:49] Transfer data to vaultフェーズの完了を待機しています。
+[2019/06/23 15:48:51] Transfer data to vaultフェーズの完了を待機しています。
+[2019/06/23 15:50:55] Transfer data to vaultフェーズの完了を待機しています。
+[2019/06/23 15:52:58] Transfer data to vaultフェーズの完了を待機しています。
+[2019/06/23 15:55:01] Transfer data to vaultフェーズの完了を待機しています。
+[2019/06/23 15:57:08] Transfer data to vaultフェーズの完了を待機しています。
+[2019/06/23 15:59:11] Transfer data to vaultフェーズの完了を待機しています。
+[2019/06/23 16:01:14] Transfer data to vaultフェーズの完了を待機しています。
+[2019/06/23 16:01:15] Azure Backupジョブ監視が完了しました。
+[2019/06/23 16:01:15] Azure Backup監視処理が完了しました。 

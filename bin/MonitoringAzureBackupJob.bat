@@ -72,7 +72,7 @@ IF NOT EXIST %~dpn0.ps1 (
 ::      スクリプト本体監視      ::
 ::::::::::::::::::::::::::::::::::
 CALL :__ECHO__ Azure Backup監視処理（%~n0.ps1）を開始します。
-powershell -ExecutionPolicy RemoteSigned -NoProfile -inputformat none -command "%~dpn0.ps1 %__VMNAME__% %__R_S_CONTAINER__% %__JOB_TIMEOUT__%;exit $LASTEXITCODE" >>"%__LOGFILE__%"
+powershell -ExecutionPolicy RemoteSigned -NoProfile -inputformat none -command "%~dpn0.ps1 -Stdout %__VMNAME__% %__R_S_CONTAINER__% %__JOB_TIMEOUT__%;exit $LASTEXITCODE" >>"%__LOGFILE__%"
 
 ::::::::::::::::::::::::::::::::::::::::::
 ::      スクリプト本体監視結果確認      ::
