@@ -1,9 +1,0 @@
-[2019/06/23 19:17:12] INFO 認証情報ファイルパス：C:\Users\naruhiro.ikeya\Documents\GitHub\AzurePowerShell\etc
-[2019/06/23 19:17:12] INFO 認証情報ファイル名：AzureCredential.xml
-[2019/06/23 19:17:12] INFO Azureへログイン:開始
-[2019/06/23 19:17:24] INFO Azureへログイン:成功
-[2019/06/23 19:17:24] INFO ecovery Servicesコンテナの選択:開始
-[2019/06/23 19:17:26] INFO 選択されたRecovery Servicesコンテナ:ikeyan-rsc
-[2019/06/23 19:17:26] INFO ecovery Servicesコンテナの選択:完了
-[2019/06/23 19:17:26] INFO 最新のリカバリジョブ結果詳細取得:開始
-[2019/06/23 19:17:27] INFO リカバリジョブが存在しません。

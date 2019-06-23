@@ -16,7 +16,6 @@
 ################################################################################>
 
 ##########################
-$ErrorActionPreference = "Stop"
 # パラメータ設定
 ##########################
 param (
@@ -25,13 +24,25 @@ param (
 )
 
 ##########################
-# 認証情報設定
+# モジュールのロード
 ##########################
-#####################
-$TennantID = "2ab73ef2-d066-4ce0-923e-94235755e2a2"
-$TennantID = "e2fb1fde-e67c-4a07-8478-5ab2b9a0577f"
-$Key="AgndRfEIsRJ+8VjN0oQjy5T+vfnlcIQUUuYsXj780FM="
-$ApplicationID="ea70cdb1-df24-4928-9bf4-4ff6b6963463"
+. .\LogController.ps1
+. .\AzureLogonFunction.ps1
+
+##########################
+# 固定値 
+##########################
+
+###############################
+# LogController オブジェクト生成
+###############################
+if($Stdout) {
+  $Log = New-Object LogController
+} else {
+  $LogFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath log -Resolve
+  $LogFile = (Get-ChildItem $MyInvocation.MyCommand.Path).BaseName + ".log"
+  $Log = New-Object LogController($($LogFilePath + "\" + $LogFile), $false)
+}
 
 ##########################
 # 警告の表示抑止
@@ -42,16 +53,20 @@ try {
   Import-Module Az
 
   ##########################
-  # Azureへのログイン
+  # Azureログオン処理
   ##########################
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azureへログイン:開始")
-  $LoginInfo = Login-AzAccount -Tenant $TennantID -WarningAction Ignore
-  if(-not $LoginInfo) { 
-    Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azureへログインできませんでした。")
+  $SettingFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath etc -Resolve
+  $SettingFile = "AzureCredential.xml"
+  $SettingFileFull = $SettingFilePath + "\" + $SettingFile 
+  $Connect = New-Object AzureLogonFunction($SettingFileFull)
+  if($Connect.Initialize($Log)) {
+    if(-not $Connect.Logon()) {
+      exit 9
+    }
+  } else {
     exit 9
   }
-  Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] Azureへログイン:完了")
-
+ 
   ###################################
   # AzureVM 確認
   ###################################

@@ -16,8 +16,6 @@
 ## @return:
 ################################################################################>
 
-$ErrorActionPreference = "Stop"
-
 Class LogController {
   [bool] $StdOut
   [bool] $EventLog

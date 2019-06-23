@@ -22,7 +22,8 @@
 param (
   [parameter(mandatory=$true)][string]$AzureVMName,
   [parameter(mandatory=$true)][string]$AzureVMResourceGroupName,
-  [parameter(mandatory=$true)][string]$RecoveryServiceVaultName
+  [parameter(mandatory=$true)][string]$RecoveryServiceVaultName,
+  [switch]$OSDiskOnly
 )
 
 ##########################
@@ -34,7 +35,7 @@ param (
 ##########################
 # 固定値 
 ########################## 
-$ErrorActionPreference = "Stop"
+#$ErrorActionPreference = "Stop"
 
 ###############################
 # LogController オブジェクト生成
@@ -98,7 +99,7 @@ try {
     exit 9
   }
   $Log.Info("最新のリカバリジョブ結果")
-  Write-Output($JobDatails| format-list -DisplayError)
+  Write-Output($($JobDatails | format-list -DisplayError))
   $Log.Info("最新のリカバリジョブ結果詳細取得:完了")
 
   #########################################
@@ -129,15 +130,17 @@ try {
     $Log.Error("OSディスクの復元が失敗しています:" + $ConfigOBJ.'properties.storageProfile'.osDisk.name)
     exit 9
   }
-  
-  foreach($DataDiskInfo in $ConfigOBJ.'properties.storageProfile'.dataDisks){
-    $CheckDisk = Get-AzDisk -ResourceGroupName $JobDatails.Properties["Target resource group"] -DiskName $DataDiskInfo.Name
-    if(-not $CheckDisk){
-      $Log.Error("Dataディスクが存在しません:" + $DataDiskInfo.Name)
-      exit 9
-    } elseif($CheckDisk.ProvisioningState -ne "Succeeded") {
-      $Log.Error("Dataディスクの復元が失敗しています:" + $DataDiskInfo.Name)
-      exit 9
+ 
+  if(-not $OSDiskOnly) {
+    foreach($DataDiskInfo in $ConfigOBJ.'properties.storageProfile'.dataDisks){
+      $CheckDisk = Get-AzDisk -ResourceGroupName $JobDatails.Properties["Target resource group"] -DiskName $DataDiskInfo.Name
+      if(-not $CheckDisk){
+        $Log.Error("Dataディスクが存在しません:" + $DataDiskInfo.Name)
+        exit 9
+      } elseif($CheckDisk.ProvisioningState -ne "Succeeded") {
+        $Log.Error("Dataディスクの復元が失敗しています:" + $DataDiskInfo.Name)
+        exit 9
+      }
     }
   }
   $Log.Info("リカバリしたディスクの正常確認:完了")
@@ -158,7 +161,7 @@ try {
   if($Result.Status -eq "Succeeded") {
     $Log.Info("仮想マシンの停止:完了")
   } else { 
-    Write-Output($StopResult | format-list -DisplayError)
+    $Log.Error($($Result | format-list -DisplayError))
     $Log.Error("仮想マシンの停止:失敗" )
     exit 9
   }
@@ -169,84 +172,85 @@ try {
   ########################################
   $Log.Info("仮想マシンのデータディスク置換処理:開始")
   foreach($RecoveryDisk in $ConfigOBJ.'properties.storageProfile'.dataDisks) {
-    $SourceDataDisk = $AzureVMInfo.StorageProfile.DataDisks | ? { $_.Lun -eq $RecoveryDisk.Lun }
-    if(-not $SourceDataDisk){
-      $Log.Error("仮想マシンにLUNが一致するディスクが接続されてません。:" + $RecoveryDisk.Name)
-      exit 9
-    }
-　　## 仮想マシンからデータディスクをデタッチ
-    $Log.Info("仮想マシンからデータディスクをデタッチします:LUN:" + $SourceDataDisk.Lun + ",DISK:" + $SourceDataDisk.Name)
-    $Result = Remove-AzVMDataDisk -VM $AzureVMInfo -Name $SourceDataDisk.Name
-    if($Result.ProvisioningState -eq "Succeeded") {
-      $Log.Info("データディスクのデタッチ:完了")
-    } else { 
-      Write-Output($Result | format-list -DisplayError)
-      $Log.Error("データディスクのデタッチ:失敗")
-      exit 9
-    }
-    $Result = Update-AzVM -ResourceGroupName $AzureVMInfo.ResourceGroupName -VM $AzureVMInfo  
-    if($Result.IsSuccessStatusCode) {
-      $Log.Info("仮想マシンの構成変更:完了")
-    } else { 
-      Write-Output($Result | format-list -DisplayError)
-      $Log.Error("仮想マシンの構成変更:失敗")
-      exit 9
+    if(-not $OSDiskOnly) {
+      $SourceDataDisk = $AzureVMInfo.StorageProfile.DataDisks | ? { $_.Lun -eq $RecoveryDisk.Lun }
+      if(-not $SourceDataDisk){
+        $Log.Error("仮想マシンにLUNが一致するディスクが接続されてません。:" + $RecoveryDisk.Name)
+        exit 9
+      }
+      ## 仮想マシンからデータディスクをデタッチ
+      $Log.Info("仮想マシンからデータディスクをデタッチします:LUN:" + $SourceDataDisk.Lun + ",DISK:" + $SourceDataDisk.Name)
+      $Result = Remove-AzVMDataDisk -VM $AzureVMInfo -Name $SourceDataDisk.Name
+      if($Result.ProvisioningState -eq "Succeeded") {
+        $Log.Info("データディスクのデタッチ:完了")
+      } else { 
+        $Log.Error($($Result | format-list -DisplayError))
+        $Log.Error("データディスクのデタッチ:失敗")
+        exit 9
+      }
+      $Result = Update-AzVM -ResourceGroupName $AzureVMInfo.ResourceGroupName -VM $AzureVMInfo  
+      if($Result.IsSuccessStatusCode) {
+        $Log.Info("仮想マシンの構成変更:完了")
+      } else { 
+        $Log.Error($($Result | format-list -DisplayError))
+        $Log.Error("仮想マシンの構成変更:失敗")
+        exit 9
+      }
+
+  　　## デタッチしたディスクの削除
+      $Log.Info("デタッチしたデータディスクを削除します:" + $SourceDataDisk.Name)
+      $Result = Remove-AzDisk -ResourceGroupName $AzureVMInfo.ResourceGroupName -DiskName $SourceDataDisk.Name -Force
+      if($Result.Status -eq "Succeeded") {
+        $Log.Info("データディスク削除:完了")
+      } else { 
+        $Log.Error($($Result | format-list -DisplayError))
+        $Log.Error("データディスク削除:失敗")
+        exit 9
+      }
+
+  　　## リカバリディスク名称変更（複製）
+      $Log.Info("リカバリしたデータディスクの名称変更（複製）を開始します:" + $RecoveryDisk.Name)
+      $CopyResult = Get-AzDisk -ResourceGroupName $JobDatails.Properties["Target resource group"] -DiskName $RecoveryDisk.Name | Update-AzDisk -ResourceGroupName  $AzureVMInfo.ResourceGroupName -DiskName $SourceDataDisk.Name
+      if($CopyResult.ProvisioningState -eq "Succeeded") {
+        $Log.Info("データディスクの名称変更:完了")
+      } else {
+        $Log.Error($($CopyResult | format-list -DisplayError))
+        $Log.Error("データディスクの名称変更:失敗")    
+        exit 9
+      }
+
+      ## 複製ディスクのアタッチ
+      $Log.Info("仮想マシンにデータディスクをアタッチします:" + $CopyResult.Name)
+      $Result = Add-AzVMDataDisk -CreateOption Attach -Lun $SourceDataDisk.lun -Caching $SourceDataDisk.Caching -VM $AzureVMInfo -ManagedDiskId $CopyResult.Id
+      if($Result.ProvisioningState -eq "Succeeded") {
+        $Log.Info("データディスクのアタッチ:完了")
+      } else { 
+        $Log.Error($($Result | format-list -DisplayError))
+        $Log.Error("データディスクのアタッチ:失敗")
+        exit 9
+      }
+      $Result = Update-AzVM -ResourceGroupName $AzureVMInfo.ResourceGroupName -VM $AzureVMInfo  
+      if($Result.IsSuccessStatusCode) {
+        $Log.Info("仮想マシンの構成変更:完了")
+      } else { 
+        $Log.Error($($Result | format-list -DisplayError))
+        $Log.Error("仮想マシンの構成変更:失敗")
+        exit 9
+      }
     }
 
-　　## デタッチしたディスクの削除
-    $Log.Info("デタッチしたデータディスクを削除します:" + $SourceDataDisk.Name)
-    $Result = Remove-AzDisk -ResourceGroupName $AzureVMInfo.ResourceGroupName -DiskName $SourceDataDisk.Name -Force
-    if($Result.Status -eq "Succeeded") {
-      $Log.Info("データディスク削除:完了")
-    } else { 
-      Write-Output($Result | format-list -DisplayError)
-      $Log.Error("データディスク削除:失敗")
-      exit 9
-    }
-
-　　## リカバリディスク名称変更（複製）
-    $Log.Info("リカバリしたデータディスクの名称変更（複製）を開始します:" + $RecoveryDisk.Name)
-    $CopyResult = Get-AzDisk -ResourceGroupName $JobDatails.Properties["Target resource group"] -DiskName $RecoveryDisk.Name | Update-AzDisk -ResourceGroupName  $AzureVMInfo.ResourceGroupName -DiskName $SourceDataDisk.Name
-    if($CopyResult.ProvisioningState -eq "Succeeded") {
-      $Log.Info("データディスクの名称変更:完了")
-    } else {
-      Write-Output($CopyResult | format-list -DisplayError)
-      $Log.Error("データディスクの名称変更:失敗")    
-      exit 9
-    }
-
-　　## 複製ディスクのアタッチ
-    $Log.Info("仮想マシンにデータディスクをアタッチします:" + $CopyResult.Name)
-    $Result = Add-AzVMDataDisk -CreateOption Attach -Lun $SourceDataDisk.lun -VM $AzureVMInfo -ManagedDiskId $CopyResult.Id
-    if($Result.ProvisioningState -eq "Succeeded") {
-      $Log.Info("データディスクのアタッチ:完了")
-    } else { 
-      Write-Output($Result | format-list -DisplayError)
-      $Log.Error("データディスクのアタッチ:失敗")
-      exit 9
-    }
-    $Result = Update-AzVM -ResourceGroupName $AzureVMInfo.ResourceGroupName -VM $AzureVMInfo  
-    if($Result.IsSuccessStatusCode) {
-      $Log.Info("仮想マシンの構成変更:完了")
-    } else { 
-      Write-Output($Result | format-list -DisplayError)
-      $Log.Error("仮想マシンの構成変更:失敗")
-      exit 9
-    }
-
-　　## リカバリ元ディスク削除
+    ## リカバリ元ディスク削除
     $Log.Info("リカバリしたデータディスクを削除します:" + $RecoveryDisk.Name)
     $Result = Remove-AzDisk -ResourceGroupName $JobDatails.Properties["Target resource group"] -DiskName $RecoveryDisk.Name -Force
     if($Result.Status -eq "Succeeded") {
       $Log.Info("複製元データディスク削除:完了:")
     } else { 
-      Write-Output($Result | format-list -DisplayError)
+      $Log.Error($($Result | format-list -DisplayError))
       $Log.Error("複製元データディスク削除:失敗")
       exit 9
     }
   }
   $Log.Info("仮想マシンのデータディスク置換処理:完了")
-
 
   ########################################
   ## 仮想マシンの再構築
@@ -259,7 +263,7 @@ try {
   if($Result.ProvisioningState -eq "Succeeded") {
     $Log.Info("OSディスクのリプレイス:完了")
   } else {
-    Write-Output($Result | format-list -DisplayError)
+    $Log.Error($($Result | format-list -DisplayError))
     $Log.Error("OSディスクのリプレイス:失敗")    
     exit 9
   }
@@ -267,7 +271,7 @@ try {
   if($Result.IsSuccessStatusCode) {
     $Log.Info("仮想マシンの構成変更:完了")
   } else { 
-    Write-Output($Result | format-list -DisplayError)
+    $Log.Error($($Result | format-list -DisplayError))
     $Log.Error("仮想マシンの構成変更:失敗")
     exit 9
   }
@@ -276,7 +280,7 @@ try {
   if($Result.Status -eq "Succeeded") {
     $Log.Info("OSディスク削除:完了:" + $SourceDataDisk.Name)
   } else { 
-    Write-Output($Result | format-list -DisplayError)
+    $Log.Error($($Result | format-list -DisplayError))
     $Log.Error("OSディスク削除:失敗" + $SourceDataDisk.Name)
     exit 9
   }
@@ -286,7 +290,7 @@ try {
   if($Result.Status -eq "Succeeded") {
     $Log.Info("仮想マシンの起動:完了")
   } else { 
-    Write-Output($Result | format-list -DisplayError)
+    $Log.Error($($Result | format-list -DisplayError))
     $Log.Error("仮想マシンの起動:失敗" )
     exit 9
   }

@@ -34,7 +34,6 @@ param (
 ##########################
 # ŒÅ’è’l 
 ##########################
-$ErrorActionPreference = "Stop"
 Set-Variable -Name "ConstantPolicyName" -Value "CooperationJobSchedulerDummyPolicy" -Option Constant
 Set-Variable -Name "DisableHours" -Value 1 -Option Constant
 

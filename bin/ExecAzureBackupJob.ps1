@@ -43,7 +43,6 @@ param (
 ##########################
 # ŒÅ’è’l 
 ##########################
-$ErrorActionPreference = "Stop"
 New-Variable -Name ReturnState -Value @("Take Snapshot","Transfer data to vault") -Option ReadOnly
 
 ###############################

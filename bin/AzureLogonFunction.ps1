@@ -14,12 +14,6 @@
 ## @return:0:Success 9:ÉGÉâÅ[èIóπ / 99:Exception
 ################################################################################>
 
-##########################
-# åxçêÇÃï\é¶ó}é~
-##########################
-$ErrorActionPreference = "Stop"
-Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
-
 Import-Module .\LogController.ps1
 
 Class AzureLogonFunction {
