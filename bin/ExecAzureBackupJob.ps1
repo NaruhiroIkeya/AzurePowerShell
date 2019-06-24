@@ -30,7 +30,7 @@ param (
   [parameter(mandatory=$true)][string]$RecoveryServiceVaultName,
   [parameter(mandatory=$true)][int]$AddDays,
   [parameter(mandatory=$true)][int64]$JobTimeout,
-  [int]$ReturnMode=0,
+  [switch]$Complete=$false,
   [switch]$Stdout
 )
 
@@ -44,6 +44,11 @@ param (
 # 固定値 
 ##########################
 New-Variable -Name ReturnState -Value @("Take Snapshot","Transfer data to vault") -Option ReadOnly
+
+##########################
+# 警告の表示抑止
+##########################
+Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
 
 ###############################
 # LogController オブジェクト生成
@@ -124,8 +129,8 @@ try {
   # ジョブ終了待機(Snapshot取得待ち)
   #################################################
   $JobResult = Wait-AzRecoveryServicesBackupJob -Job $Job -Timeout $JobTimeout
-  While(($($JobResult.SubTasks | ? {$_.Name -eq $ReturnState[$ReturnMode]} | % {$_.Status}) -ne "Completed") -and ($JobResult.Status -ne "Failed" -and $JobResult.Status -ne "Cancelled")) {
-    $Log.Info($ReturnState[$ReturnMode] + "フェーズの完了を待機しています。")    
+  While(($($JobResult.SubTasks | ? {$_.Name -eq $ReturnState[[int]$Complete]} | % {$_.Status}) -ne "Completed") -and ($JobResult.Status -ne "Failed" -and $JobResult.Status -ne "Cancelled")) {
+    $Log.Info($ReturnState[[int]$Complete] + "フェーズの完了を待機しています。")    
     $JobResult = Wait-AzRecoveryServicesBackupJob -Job $Job -Timeout $JobTimeout
   }
   if($JobResult.Status -eq "InProgress") {

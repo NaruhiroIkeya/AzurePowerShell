@@ -35,7 +35,11 @@ param (
 ##########################
 # 固定値 
 ##########################
-$ErrorActionPreference = "Stop"
+
+##########################
+# 警告の表示抑止
+##########################
+Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
 
 ###############################
 # LogController オブジェクト生成

@@ -37,6 +37,11 @@ param (
 ########################## 
 #$ErrorActionPreference = "Stop"
 
+##########################
+# 警告の表示抑止
+##########################
+Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
+
 ###############################
 # LogController オブジェクト生成
 ###############################
@@ -161,7 +166,7 @@ try {
   if($Result.Status -eq "Succeeded") {
     $Log.Info("仮想マシンの停止:完了")
   } else { 
-    $Log.Error($($Result | format-list -DisplayError))
+    Write-Output($($Result | format-list -DisplayError))
     $Log.Error("仮想マシンの停止:失敗" )
     exit 9
   }
@@ -184,7 +189,7 @@ try {
       if($Result.ProvisioningState -eq "Succeeded") {
         $Log.Info("データディスクのデタッチ:完了")
       } else { 
-        $Log.Error($($Result | format-list -DisplayError))
+        Write-Output($($Result | format-list -DisplayError))
         $Log.Error("データディスクのデタッチ:失敗")
         exit 9
       }
@@ -192,7 +197,7 @@ try {
       if($Result.IsSuccessStatusCode) {
         $Log.Info("仮想マシンの構成変更:完了")
       } else { 
-        $Log.Error($($Result | format-list -DisplayError))
+        Write-Output($($Result | format-list -DisplayError))
         $Log.Error("仮想マシンの構成変更:失敗")
         exit 9
       }
@@ -203,7 +208,7 @@ try {
       if($Result.Status -eq "Succeeded") {
         $Log.Info("データディスク削除:完了")
       } else { 
-        $Log.Error($($Result | format-list -DisplayError))
+        Write-Output($($Result | format-list -DisplayError))
         $Log.Error("データディスク削除:失敗")
         exit 9
       }
@@ -214,7 +219,7 @@ try {
       if($CopyResult.ProvisioningState -eq "Succeeded") {
         $Log.Info("データディスクの名称変更:完了")
       } else {
-        $Log.Error($($CopyResult | format-list -DisplayError))
+        Write-Output($($CopyResult | format-list -DisplayError))
         $Log.Error("データディスクの名称変更:失敗")    
         exit 9
       }
@@ -225,7 +230,7 @@ try {
       if($Result.ProvisioningState -eq "Succeeded") {
         $Log.Info("データディスクのアタッチ:完了")
       } else { 
-        $Log.Error($($Result | format-list -DisplayError))
+        Write-Output($($Result | format-list -DisplayError))
         $Log.Error("データディスクのアタッチ:失敗")
         exit 9
       }
@@ -233,7 +238,7 @@ try {
       if($Result.IsSuccessStatusCode) {
         $Log.Info("仮想マシンの構成変更:完了")
       } else { 
-        $Log.Error($($Result | format-list -DisplayError))
+        Write-Output($($Result | format-list -DisplayError))
         $Log.Error("仮想マシンの構成変更:失敗")
         exit 9
       }
@@ -245,7 +250,7 @@ try {
     if($Result.Status -eq "Succeeded") {
       $Log.Info("複製元データディスク削除:完了:")
     } else { 
-      $Log.Error($($Result | format-list -DisplayError))
+      Write-Output($($Result | format-list -DisplayError))
       $Log.Error("複製元データディスク削除:失敗")
       exit 9
     }
@@ -263,7 +268,7 @@ try {
   if($Result.ProvisioningState -eq "Succeeded") {
     $Log.Info("OSディスクのリプレイス:完了")
   } else {
-    $Log.Error($($Result | format-list -DisplayError))
+    Write-Output($($Result | format-list -DisplayError))
     $Log.Error("OSディスクのリプレイス:失敗")    
     exit 9
   }
@@ -271,7 +276,7 @@ try {
   if($Result.IsSuccessStatusCode) {
     $Log.Info("仮想マシンの構成変更:完了")
   } else { 
-    $Log.Error($($Result | format-list -DisplayError))
+    Write-Output($($Result | format-list -DisplayError))
     $Log.Error("仮想マシンの構成変更:失敗")
     exit 9
   }
@@ -280,7 +285,7 @@ try {
   if($Result.Status -eq "Succeeded") {
     $Log.Info("OSディスク削除:完了:" + $SourceDataDisk.Name)
   } else { 
-    $Log.Error($($Result | format-list -DisplayError))
+    Write-Output($($Result | format-list -DisplayError))
     $Log.Error("OSディスク削除:失敗" + $SourceDataDisk.Name)
     exit 9
   }
@@ -290,7 +295,7 @@ try {
   if($Result.Status -eq "Succeeded") {
     $Log.Info("仮想マシンの起動:完了")
   } else { 
-    $Log.Error($($Result | format-list -DisplayError))
+    Write-Output($($Result | format-list -DisplayError))
     $Log.Error("仮想マシンの起動:失敗" )
     exit 9
   }

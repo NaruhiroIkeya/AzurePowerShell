@@ -37,6 +37,11 @@ param (
 # 固定値 
 ##########################
 
+##########################
+# 警告の表示抑止
+##########################
+Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
+
 ###############################
 # LogController オブジェクト生成
 ###############################
@@ -55,11 +60,6 @@ if($ExpireDays -lt 1) {
   $Log.Info("保持日数は1以上を設定してください。")
   exit 1
 }
-
-##########################
-# 警告の表示抑止
-##########################
-Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
 
 try {
   ##########################

@@ -32,6 +32,11 @@ param (
 # 固定値 
 ##########################
 
+##########################
+# 警告の表示抑止
+##########################
+Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
+
 ###############################
 # LogController オブジェクト生成
 ###############################
@@ -43,14 +48,7 @@ if($Stdout) {
   $Log = New-Object LogController($($LogFilePath + "\" + $LogFile), $false)
 }
 
-##########################
-# 警告の表示抑止
-##########################
-Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
-
 try {
-  Import-Module Az
-
   ##########################
   # Azureログオン処理
   ##########################

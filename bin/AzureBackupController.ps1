@@ -37,6 +37,11 @@ param (
 Set-Variable -Name "ConstantPolicyName" -Value "CooperationJobSchedulerDummyPolicy" -Option Constant
 Set-Variable -Name "DisableHours" -Value 1 -Option Constant
 
+##########################
+# 警告の表示抑止
+##########################
+Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
+
 ###############################
 # LogController オブジェクト生成
 ###############################
@@ -58,11 +63,6 @@ if ($EnableAzureBakup -xor $DisableAzureBakup) {
   $Log.Error("Syntax Error:実行時に -EnableAzureBackup / -DisableAzureBackup を指定してください。")
   exit 9
 }
-
-##########################
-# 警告の表示抑止
-##########################
-Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
 
 try {
   ##########################
