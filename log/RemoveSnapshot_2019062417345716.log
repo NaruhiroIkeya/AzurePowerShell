@@ -1,0 +1,7 @@
+[2019/06/24 17:34:58] RemoveSnapshot実行処理（RemoveSnapshot.ps1）を開始します。 
+[2019/06/24 17:34:58] 認証情報ファイルパス：C:\Users\naruhiro.ikeya\Documents\GitHub\AzurePowerShell\etc
+[2019/06/24 17:34:59] 認証情報ファイル名：AzureCredential.xml
+[2019/06/24 17:34:59] Azureへログイン:開始
+[2019/06/24 17:35:16] Azureへログイン:成功
+[2019/06/24 17:35:18] 削除対象のSnapshotがありません。
+[2019/06/24 17:35:18] RemoveSnapshot実行処理が完了しました。 

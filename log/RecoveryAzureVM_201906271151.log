@@ -1,0 +1,9 @@
+[2019/06/27 11:51:45] INFO 認証情報ファイルパス：C:\Users\naruhiro.ikeya\Documents\GitHub\AzurePowerShell\etc
+[2019/06/27 11:51:45] INFO 認証情報ファイル名：AzureCredential.xml
+[2019/06/27 11:51:45] INFO Azureへログイン:開始
+[2019/06/27 11:52:10] INFO Azureへログイン:成功
+[2019/06/27 11:52:10] INFO Recovery Servicesコンテナの選択:開始
+[2019/06/27 11:52:13] INFO 選択されたRecovery Servicesコンテナ:ikeyan-rsc
+[2019/06/27 11:52:13] INFO Recovery Servicesコンテナの選択:完了
+[2019/06/27 11:52:13] INFO 最新のリカバリジョブ結果詳細取得:開始
+[2019/06/27 11:52:15] ERROR リカバリジョブが存在しません
