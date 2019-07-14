@@ -82,7 +82,6 @@ try {
     $Log.Error("Recovery Serviceコンテナー名が不正です:" + $RecoveryServiceVaultName)
     exit 9
   }
-  Set-AzRecoveryServicesVaultContext -Vault $RecoveryServiceVault
   $Log.Info("選択されたRecovery Servicesコンテナ:" + $RecoveryServiceVault.Name)
   $Log.Info("Recovery Servicesコンテナの選択:完了")
 
@@ -90,12 +89,12 @@ try {
   ## 最新のリストアジョブ結果詳細を取得
   #########################################
   $Log.Info("最新のリカバリジョブ結果詳細取得:開始")
-  $RecoveryVHDJob = Get-AzRecoveryServicesBackupJob | ? {$_.WorkloadName -eq $AzureVMName -and $_.Operation -eq "Restore" -and $_.Status -eq "Completed"} | sort @{Expression="Endtime";Descending=$true} | Select -First 1
+  $RecoveryVHDJob = Get-AzRecoveryServicesBackupJob -VaultId $RecoveryServiceVault.ID | ? {$_.WorkloadName -eq $AzureVMName -and $_.Operation -eq "Restore" -and $_.Status -eq "Completed"} | sort @{Expression="Endtime";Descending=$true} | Select -First 1
   if(-not $RecoveryVHDJob) { 
     $Log.Error("リカバリジョブが存在しません")
     exit 9
   }
-  $JobDatails = Get-AzRecoveryServicesBackupJobDetails -Job $RecoveryVHDJob
+  $JobDatails = Get-AzRecoveryServicesBackupJobDetails -VaultId $RecoveryServiceVault.ID -Job $RecoveryVHDJob
   if(-not $JobDatails) { 
     $Log.Error("リカバリジョブ詳細が取得できませんでした")
     exit 9

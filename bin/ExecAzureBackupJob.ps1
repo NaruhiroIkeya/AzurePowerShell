@@ -44,6 +44,7 @@ param (
 # 固定値 
 ##########################
 New-Variable -Name ReturnState -Value @("Take Snapshot","Transfer data to vault") -Option ReadOnly
+# $ErrorActionPreference="Stop"
 
 ##########################
 # 警告の表示抑止
@@ -99,17 +100,16 @@ try {
     $Log.Error("Recovery Serviceコンテナー名が不正です。")
     exit 9
   }
-  Set-AzRecoveryServicesVaultContext -Vault $RecoveryServiceVault
 
   #################################################
   # Azure Backup(IaaS) 設定済みサーバ 情報取得
   #################################################
-  $BackupContainer = Get-AzRecoveryServicesBackupContainer -ContainerType "AzureVM" -Status "Registered" -FriendlyName $AzureVMName
+  $BackupContainer = Get-AzRecoveryServicesBackupContainer -VaultId $RecoveryServiceVault.ID -ContainerType "AzureVM" -Status "Registered" -FriendlyName $AzureVMName
   if(-not $BackupContainer) { 
     $Log.Error("Recovery Services コンテナーにバックアップ対象（" + $AzureVMName + "）が存在しません。")
     exit 9
   }
-  $BackupItem = Get-AzRecoveryServicesBackupItem -Container $BackupContainer -WorkloadType "AzureVM"
+  $BackupItem = Get-AzRecoveryServicesBackupItem -VaultId $RecoveryServiceVault.ID -Container $BackupContainer -WorkloadType "AzureVM"
   ##########################################################################################################################
   # -ExpiryDateTimeUTCには、バックアップ保管期間を指定（「UTC」かつジョブ実行タイミングから「1日後」～「99年後」で指定）
   ##########################################################################################################################
@@ -118,7 +118,7 @@ try {
   # Azure Backup(IaaS) 実行
   #################################################
   $Log.Info("Azure Backupジョブを実行します。")
-  $Job = Backup-AzRecoveryServicesBackupItem -Item $BackupItem -ExpiryDateTimeUTC $ExpiryDateUTC
+  $Job = Backup-AzRecoveryServicesBackupItem -VaultId $RecoveryServiceVault.ID -Item $BackupItem -ExpiryDateTimeUTC $ExpiryDateUTC
   if($Job.Status -eq "Failed") {
     $Log.Error("Azure Backupジョブがエラー終了しました。")
 　　$Job | Format-List -DisplayError
@@ -128,20 +128,20 @@ try {
   #################################################
   # ジョブ終了待機(Snapshot取得待ち)
   #################################################
-  $JobResult = Wait-AzRecoveryServicesBackupJob -Job $Job -Timeout $JobTimeout
+  $JobResult = Wait-AzRecoveryServicesBackupJob -VaultId $RecoveryServiceVault.ID -Job $Job -Timeout $JobTimeout
   While(($($JobResult.SubTasks | ? {$_.Name -eq $ReturnState[[int]$Complete]} | % {$_.Status}) -ne "Completed") -and ($JobResult.Status -ne "Failed" -and $JobResult.Status -ne "Cancelled")) {
     $Log.Info($ReturnState[[int]$Complete] + "フェーズの完了を待機しています。")    
-    $JobResult = Wait-AzRecoveryServicesBackupJob -Job $Job -Timeout $JobTimeout
+    $JobResult = Wait-AzRecoveryServicesBackupJob -VaultId $RecoveryServiceVault.ID -Job $Job -Timeout $JobTimeout
   }
   if($JobResult.Status -eq "InProgress") {
-    $SubTasks = $(Get-AzRecoveryServicesBackupJobDetails -JobId $JobResult.JobId).SubTasks
+    $SubTasks = $(Get-AzRecoveryServicesBackupJobDetails -VaultId $RecoveryServiceVault.ID -JobId $JobResult.JobId).SubTasks
     $Log.Info("Azure Backupジョブ監視を中断します。Job ID=" +  $JobResult.JobId)
     Foreach($SubTask in $SubTasks) {
       $Log.Info($SubTask.Name + " " +  $SubTask.Status)
     }
     exit 2
   } elseif($JobResult.Status -eq "Cancelled") {
-    $SubTasks = $(Get-AzRecoveryServicesBackupJobDetails -JobId $JobResult.JobId).SubTasks
+    $SubTasks = $(Get-AzRecoveryServicesBackupJobDetails -VaultId $RecoveryServiceVault.ID -JobId $JobResult.JobId).SubTasks
     $Log.Warn("Azure Backupジョブがキャンセルされました。Job ID=" +  $JobResult.JobId)
     Foreach($SubTask in $SubTasks) {
       $Log.Warn($SubTask.Name + " " +  $SubTask.Status)

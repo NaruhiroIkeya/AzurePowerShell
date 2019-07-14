@@ -1,0 +1,12 @@
+[2019/07/08 18:34:43] INFO ログローテーション処理が完了しました。
+[2019/07/08 18:34:43] INFO Azure Backupを無効化します。
+[2019/07/08 18:34:43] INFO 認証情報ファイルパス：C:\Users\naruhiro.ikeya\Documents\GitHub\AzurePowerShell\etc
+[2019/07/08 18:34:43] INFO 認証情報ファイル名：AzureCredential.xml
+[2019/07/08 18:34:43] INFO サービスプリンシパルを利用しAzureへログイン:開始
+[2019/07/08 18:34:45] INFO Azureへログイン:成功
+[2019/07/08 18:34:48] INFO Azure Backup無効化処理:開始
+[2019/07/08 18:34:48] INFO DefaultPolicyの無効化時間帯は 2019/07/08 14:00～2019/07/09 00:00です。
+[2019/07/08 18:34:48] INFO DefaultPolicyの無効化処理を開始します。
+[2019/07/08 18:34:49] INFO testvmのAzure Backup無効化をバックグラウンドジョブで実行しました。
+[2019/07/08 18:35:15] INFO 
+[2019/07/08 18:35:15] INFO Azure Backup無効化処理:完了

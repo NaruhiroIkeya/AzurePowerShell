@@ -35,7 +35,7 @@ param (
 # 固定値 
 ##########################
 Set-Variable -Name "ConstantPolicyName" -Value "CooperationJobSchedulerDummyPolicy" -Option Constant
-Set-Variable -Name "DisableHours" -Value 1 -Option Constant
+Set-Variable -Name "DisableHours" -Value 10 -Option Constant
 
 ##########################
 # 警告の表示抑止
@@ -82,11 +82,10 @@ try {
   
   $RecoveryServicesVaults = Get-AzRecoveryServicesVault
   foreach($Vault in $RecoveryServicesVaults) {
-    Set-AzRecoveryServicesVaultContext -Vault $Vault
     if(-not $AzureVMBackupPolicyName) {
-      $AzureVMProtectionPolicies = Get-AzRecoveryServicesBackupProtectionPolicy -WorkloadType "AzureVM" 
+      $AzureVMProtectionPolicies = Get-AzRecoveryServicesBackupProtectionPolicy -VaultId $Vault.ID -WorkloadType "AzureVM" 
     } else {
-      $AzureVMProtectionPolicies = Get-AzRecoveryServicesBackupProtectionPolicy | ? { $_.Name -eq $AzureVMBackupPolicyName }
+      $AzureVMProtectionPolicies = Get-AzRecoveryServicesBackupProtectionPolicy -VaultId $Vault.ID | ? { $_.Name -eq $AzureVMBackupPolicyName }
       if((-not $AzureVMProtectionPolicies) -and $DisableAzureBakup) {
         $Log.Info("指定されたBackup Policyが見つかりません。:$AzureVMBackupPolicyName")
         exit 9
@@ -95,14 +94,14 @@ try {
       }
     }
 
-    $RegisterdVMsContainer = Get-AzRecoveryServicesBackupContainer -ContainerType "AzureVM" -Status "Registered"
+    $RegisterdVMsContainer = Get-AzRecoveryServicesBackupContainer -VaultId $Vault.ID -ContainerType "AzureVM" -Status "Registered"
     if($EnableAzureBakup) {
       $Log.Info("Azure Backup有効化処理:開始")
       if(-not $AzureVMProtectionPolicies) {
         ##########################
         # Backup Policyの新規作成
         ##########################
-        $SchedulePolicyObject = Get-AzRecoveryServicesBackupSchedulePolicyObject -WorkloadType "AzureVM"
+        $SchedulePolicyObject = Get-AzRecoveryServicesBackupSchedulePolicyObject -VaultId $Vault.ID -WorkloadType "AzureVM"
         if(-not $SchedulePolicyObject) { 
           $Log.Info("SchedulePolicyObjectの生成に失敗しました。")
           exit 9
@@ -124,7 +123,7 @@ try {
         $UtcTime = $UtcTime.ToUniversalTime()
         $RetentionPolicyObject.DailySchedule.RetentionTimes[0] = $UtcTime
 
-        $AzureVMProtectionPolicy = New-AzRecoveryServicesBackupProtectionPolicy -Name $AzureVMBackupPolicyName -WorkloadType "AzureVM" -RetentionPolicy $RetentionPolicyObject -SchedulePolicy $SchedulePolicyObject
+        $AzureVMProtectionPolicy = New-AzRecoveryServicesBackupProtectionPolicy -VaultId $Vault.ID -Name $AzureVMBackupPolicyName -WorkloadType "AzureVM" -RetentionPolicy $RetentionPolicyObject -SchedulePolicy $SchedulePolicyObject
         if(-not $AzureVMProtectionPolicy) { 
           $Log.Error("バックアップポリシーの作成に失敗しました。")
           exit 9
@@ -155,7 +154,7 @@ try {
             exit 9
           } 
           foreach($Container in $RegisterdVMsContainer) {
-            $BackupItem = Get-AzRecoveryServicesBackupItem -Container $Container -WorkloadType AzureVM 
+            $BackupItem = Get-AzRecoveryServicesBackupItem -VaultId $Vault.ID -Container $Container -WorkloadType AzureVM 
             foreach($AzureVM in $BackupPolicyConfig.BackupPolicy.VM) {
               if($BackupItem.ProtectionPolicyName) {
                 $Log.Info($Container.FriendlyName + "は有効化済です。")
@@ -167,11 +166,11 @@ try {
                 $EnableJob = {
                   param([string]$VaultName, [string]$VMName, [string]$PolicyName)
                   try {
-                    Get-AzRecoveryServicesVault -Name $VaultName | Set-AzRecoveryServicesVaultContext
-                    $Container = Get-AzRecoveryServicesBackupContainer -ContainerType "AzureVM" -Status "Registered" -FriendlyName $VMName
-                    $Item = Get-AzRecoveryServicesBackupItem -Container $Container -WorkloadType AzureVM 
-                    $AzureVMProtectionPolicy = Get-AzRecoveryServicesBackupProtectionPolicy -Name $PolicyName
-                    $EnabledItem = Enable-AzRecoveryServicesBackupProtection -Item $Item -Policy $AzureVMProtectionPolicy
+                    $Vault = Get-AzRecoveryServicesVault -Name $VaultName
+                    $Container = Get-AzRecoveryServicesBackupContainer -VaultId $Vault.ID -ContainerType "AzureVM" -Status "Registered" -FriendlyName $VMName
+                    $Item = Get-AzRecoveryServicesBackupItem -VaultId $Vault.ID -Container $Container -WorkloadType AzureVM 
+                    $AzureVMProtectionPolicy = Get-AzRecoveryServicesBackupProtectionPolicy -VaultId $Vault.ID -Name $PolicyName
+                    $EnabledItem = Enable-AzRecoveryServicesBackupProtection -VaultId $Vault.ID -Item $Item -Policy $AzureVMProtectionPolicy
                     Write-Host("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $EnabledItem.WorkloadName + "のAzure Backupを有効化しました。")
                   } catch {
                     Write-Host("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $VMName + "のAzure Backu有効化に失敗しました。")
@@ -209,7 +208,7 @@ try {
         if(($DisableTime -le $Now) -and ($Now -lt $RetentionTime)) {
           $Log.Info($AzureVMProtectionPolicy.Name + "の無効化処理を開始します。")
           foreach($Container in $RegisterdVMsContainer) {
-            $BackupItem = Get-AzRecoveryServicesBackupItem -Container $Container -WorkloadType AzureVM 
+            $BackupItem = Get-AzRecoveryServicesBackupItem -VaultId $Vault.ID -Container $Container -WorkloadType AzureVM 
             if($BackupItem.ProtectionPolicyName -eq $AzureVMProtectionPolicy.Name) {
             ############################
             # 無効化バックグラウンド実行
@@ -217,10 +216,10 @@ try {
               $DisabaleJob = {
                 param([string]$VaultName, [string]$VMName)
                 try {
-                  Get-AzRecoveryServicesVault -Name $VaultName | Set-AzRecoveryServicesVaultContext
-                  $Container = Get-AzRecoveryServicesBackupContainer -ContainerType "AzureVM" -Status "Registered" -FriendlyName $VMName
-                  $Item = Get-AzRecoveryServicesBackupItem -Container $Container -WorkloadType AzureVM 
-                  $DisabledItem = Disable-AzRecoveryServicesBackupProtection -Item $Item -Force
+                  $Vault = Get-AzRecoveryServicesVault -Name $VaultName
+                  $Container = Get-AzRecoveryServicesBackupContainer -VaultId $Vault.ID -ContainerType "AzureVM" -Status "Registered" -FriendlyName $VMName
+                  $Item = Get-AzRecoveryServicesBackupItem -VaultId $Vault.ID -Container $Container -WorkloadType AzureVM
+                  $DisabledItem = Disable-AzRecoveryServicesBackupProtection -VaultId $Vault.ID -Item $Item -Force
                   Write-Host("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $DisabledItem.WorkloadName + "のAzure Backupを無効化しました。")
                 } catch {
                   Write-Host("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $VMName + "のAzure Backup無効化に失敗しました。")
