@@ -76,14 +76,14 @@ try {
   ###################################
   #対象Recovery Services Vaultの選択
   ###################################
-  $Log.Info("ecovery Servicesコンテナの選択:開始")
+  $Log.Info("Recovery Servicesコンテナの選択:開始")
   $RecoveryServiceVault = Get-AzRecoveryServicesVault -Name $RecoveryServiceVaultName
   if(-not $RecoveryServiceVault) { 
-    $Log.Info("ecovery Serviceコンテナー名が不正です。")
+    $Log.Info("Recovery Serviceコンテナー名が不正です。")
     exit 9
   }
   $Log.Info("選択されたRecovery Servicesコンテナ:" + $RecoveryServiceVault.Name)
-  $Log.Info("ecovery Servicesコンテナの選択:完了")
+  $Log.Info("Recovery Servicesコンテナの選択:完了")
 
   #########################################
   ## 最新のリストアジョブ結果詳細を取得
@@ -251,7 +251,7 @@ try {
   $AzureVMInfo.StorageProfile.ImageReference = $null
   $AzureVMInfo.OSProfile = $null
   $Log.Info("仮想マシンを作成します。")
-  $CreateVMJob = New-AzVM -ResourceGroupName $AzureVMInfo.ResourceGroupName -Location $AzureVMInfo.Location -VM $AzureVMInfo
+  $CreateVMJob = New-AzVM -ResourceGroupName $AzureVMInfo.ResourceGroupName -Location $AzureVMInfo.Location -VM $AzureVMInfo -DisableBginfoExtension
 
   #################################################
   # エラーハンドリング
