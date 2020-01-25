@@ -35,7 +35,7 @@ param (
 # 固定値 
 ##########################
 Set-Variable -Name "ConstantPolicyName" -Value "CooperationJobSchedulerDummyPolicy" -Option Constant
-Set-Variable -Name "DisableHours" -Value 10 -Option Constant
+Set-Variable -Name "DisableHours" -Value 3 -Option Constant
 
 ##########################
 # 警告の表示抑止
@@ -82,6 +82,7 @@ try {
   
   $RecoveryServicesVaults = Get-AzRecoveryServicesVault
   foreach($Vault in $RecoveryServicesVaults) {
+    $Log.Info("Recovery Service コンテナー:" + $Vault.Name)
     if(-not $AzureVMBackupPolicyName) {
       $AzureVMProtectionPolicies = Get-AzRecoveryServicesBackupProtectionPolicy -VaultId $Vault.ID -WorkloadType "AzureVM" 
     } else {
@@ -133,10 +134,30 @@ try {
       # Azure Backup(IaaS)の有効化
       ############################
       foreach($AzureVMProtectionPolicy in $AzureVMProtectionPolicies) {
-        $UTCDate = (Get-Date).AddHours($DisableHours).ToUniversalTime().ToString("yyyy/MM/dd")
-        $RetentionTime = Get-Date -Date $($UTCDate + " " + $AzureVMProtectionPolicy.RetentionPolicy.DailySchedule.RetentionTimes[0].toString("HH:mm"))
-        $DisableTime = $RetentionTime.AddHours(-1 * $DisableHours)
-        $Now = (Get-Date).ToUniversalTime()
+        if($AzureVMProtectionPolicy.RetentionPolicy.IsDailyScheduleEnabled) {
+          $RetaintionTime = $AzureVMProtectionPolicy.RetentionPolicy.DailySchedule.RetentionTimes[0].toString("HH:mm")
+
+          $UTCDate = (Get-Date).AddHours($DisableHours).ToUniversalTime().ToString("yyyy/MM/dd")
+          $RetentionTime = Get-Date -Date $($UTCDate + " " + $RetaintionTime)
+          $DisableTime = $RetentionTime.AddHours(-1 * $DisableHours)
+          $Now = (Get-Date).ToUniversalTime()
+        } elseif($AzureVMProtectionPolicy.RetentionPolicy.IsWeeklyScheduleEnabled) {
+          $RetaintionTime = $AzureVMProtectionPolicy.RetentionPolicy.WeeklySchedule.RetentionTimes[0].toString("HH:mm")
+
+          $Today = Get-Date
+          if($Today.DayOfWeek -eq $AzureVMProtectionPolicy.RetentionPolicy.WeeklySchedule.DaysOfTheWeek) {
+            $UTCDate = $Today.AddHours($DisableHours).ToUniversalTime().ToString("yyyy/MM/dd")
+          } else {
+            $UTCDate = ($Today.AddDays((6 - $Today.DayOfWeek + [DayOfWeek]::$($AzureVMProtectionPolicy.RetentionPolicy.WeeklySchedule.DaysOfTheWeek)) % 7 + 1)).AddHours($DisableHours).ToUniversalTime().ToString("yyyy/MM/dd")
+          }
+          $RetentionTime = Get-Date -Date $($UTCDate + " " + $RetaintionTime)
+          $DisableTime = $RetentionTime.AddHours(-1 * $DisableHours)
+          $Now = (Get-Date).ToUniversalTime()
+        } elseif($AzureVMProtectionPolicy.RetentionPolicy.IsMonthlyScheduleEnabled) {
+          $RetaintionTime = $AzureVMProtectionPolicy.RetentionPolicy.MonthlySchedule.RetentionTimes[0].toString("HH:mm")
+        } elseif($AzureVMProtectionPolicy.RetentionPolicy.IsYearlyScheduleEnabled) {
+          $RetaintionTime = $AzureVMProtectionPolicy.RetentionPolicy.YearlySchedule.RetentionTimes[0].toString("HH:mm")
+        }
 
         $Log.Info($AzureVMProtectionPolicy.Name + "の有効化時間帯は ～" + $DisableTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm") + "までです。" + $RetentionTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm") + "移行に再有効化可能です。")
         if(($Now -gt $RetentionTime) -or ($Now -le $DisableTime)) {
@@ -199,10 +220,30 @@ try {
       ############################
       $Log.Info("Azure Backup無効化処理:開始")
       foreach($AzureVMProtectionPolicy in $AzureVMProtectionPolicies) {
-        $UTCDate = (Get-Date).AddHours($DisableHours).ToUniversalTime().ToString("yyyy/MM/dd")
-        $RetentionTime = Get-Date -Date $($UTCDate + " " + $AzureVMProtectionPolicy.RetentionPolicy.DailySchedule.RetentionTimes[0].toString("HH:mm"))
-        $DisableTime = $RetentionTime.AddHours(-1 * $DisableHours)
-        $Now = (Get-Date).ToUniversalTime()
+        if($AzureVMProtectionPolicy.RetentionPolicy.IsDailyScheduleEnabled) {
+          $RetaintionTime = $AzureVMProtectionPolicy.RetentionPolicy.DailySchedule.RetentionTimes[0].toString("HH:mm")
+          
+          $UTCDate = (Get-Date).AddHours($DisableHours).ToUniversalTime().ToString("yyyy/MM/dd")
+          $RetentionTime = Get-Date -Date $($UTCDate + " " + $RetaintionTime)
+          $DisableTime = $RetentionTime.AddHours(-1 * $DisableHours)
+          $Now = (Get-Date).ToUniversalTime()
+        } elseif($AzureVMProtectionPolicy.RetentionPolicy.IsWeeklyScheduleEnabled) {
+          $RetaintionTime = $AzureVMProtectionPolicy.RetentionPolicy.WeeklySchedule.RetentionTimes[0].toString("HH:mm")
+
+          $Today = Get-Date
+          if($Today.DayOfWeek -eq $AzureVMProtectionPolicy.RetentionPolicy.WeeklySchedule.DaysOfTheWeek) {
+            $UTCDate = $Today.AddHours($DisableHours).ToUniversalTime().ToString("yyyy/MM/dd")
+          } else {
+            $UTCDate = ($Today.AddDays((6 - $Today.DayOfWeek + [DayOfWeek]::$($AzureVMProtectionPolicy.RetentionPolicy.WeeklySchedule.DaysOfTheWeek)) % 7 + 1)).AddHours($DisableHours).ToUniversalTime().ToString("yyyy/MM/dd")
+          }
+          $RetentionTime = Get-Date -Date $($UTCDate + " " + $RetaintionTime)
+          $DisableTime = $RetentionTime.AddHours(-1 * $DisableHours)
+          $Now = (Get-Date).ToUniversalTime()
+        } elseif($AzureVMProtectionPolicy.RetentionPolicy.IsMonthlyScheduleEnabled) {
+          $RetaintionTime = $AzureVMProtectionPolicy.RetentionPolicy.MonthlySchedule.RetentionTimes[0].toString("HH:mm")
+        } elseif($AzureVMProtectionPolicy.RetentionPolicy.IsYearlyScheduleEnabled) {
+          $RetaintionTime = $AzureVMProtectionPolicy.RetentionPolicy.YearlySchedule.RetentionTimes[0].toString("HH:mm")
+        }
 
         $Log.Info($AzureVMProtectionPolicy.Name + "の無効化時間帯は " + $DisableTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm") + "～" + $RetentionTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm") + "です。")
         if(($DisableTime -le $Now) -and ($Now -lt $RetentionTime)) {

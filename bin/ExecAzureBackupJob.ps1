@@ -129,8 +129,9 @@ try {
   # ジョブ終了待機(Snapshot取得待ち)
   #################################################
   $JobResult = Wait-AzRecoveryServicesBackupJob -VaultId $RecoveryServiceVault.ID -Job $Job -Timeout $JobTimeout
-  While(($($JobResult.SubTasks | ? {$_.Name -eq $ReturnState[[int]$Complete]} | % {$_.Status}) -ne "Completed") -and ($JobResult.Status -ne "Failed" -and $JobResult.Status -ne "Cancelled")) {
-    $Log.Info($ReturnState[[int]$Complete] + "フェーズの完了を待機しています。")    
+  $CompStatus = if($Complete) { Write-Output "1" } else { Write-Output "0" }
+    While(($($JobResult.SubTasks | ? {$_.Name -eq $ReturnState[$CompStatus]} | % {$_.Status}) -ne "Completed") -and ($JobResult.Status -ne "Failed" -and $JobResult.Status -ne "Cancelled")) {
+    $Log.Info($ReturnState[$CompStatus] + "フェーズの完了を待機しています。")    
     $JobResult = Wait-AzRecoveryServicesBackupJob -VaultId $RecoveryServiceVault.ID -Job $Job -Timeout $JobTimeout
   }
   if($JobResult.Status -eq "InProgress") {
