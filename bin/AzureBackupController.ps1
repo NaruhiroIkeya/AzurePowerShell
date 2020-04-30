@@ -86,7 +86,7 @@ try {
     if(-not $AzureVMBackupPolicyName) {
       $AzureVMProtectionPolicies = Get-AzRecoveryServicesBackupProtectionPolicy -VaultId $Vault.ID -WorkloadType "AzureVM" 
     } else {
-      $AzureVMProtectionPolicies = Get-AzRecoveryServicesBackupProtectionPolicy -VaultId $Vault.ID | ? { $_.Name -eq $AzureVMBackupPolicyName }
+      $AzureVMProtectionPolicies = Get-AzRecoveryServicesBackupProtectionPolicy -VaultId $Vault.ID | Where-Object { $_.Name -eq $AzureVMBackupPolicyName }
       if((-not $AzureVMProtectionPolicies) -and $DisableAzureBakup) {
         $Log.Info("éwíËÇ≥ÇÍÇΩBackup PolicyÇ™å©Ç¬Ç©ÇËÇ‹ÇπÇÒÅB:$AzureVMBackupPolicyName")
         exit 9
