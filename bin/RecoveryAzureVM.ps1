@@ -89,7 +89,7 @@ try {
   ## 最新のリストアジョブ結果詳細を取得
   #########################################
   $Log.Info("最新のリカバリジョブ結果詳細取得:開始")
-  $RecoveryVHDJob = Get-AzRecoveryServicesBackupJob -VaultId $RecoveryServiceVault.ID | ? {$_.WorkloadName -eq $AzureVMName -and $_.Operation -eq "Restore" -and $_.Status -eq "Completed"} | sort @{Expression="Endtime";Descending=$true} | Select -First 1
+  $RecoveryVHDJob = Get-AzRecoveryServicesBackupJob -VaultId $RecoveryServiceVault.ID | Where-Object {$_.WorkloadName -eq $AzureVMName -and $_.Operation -eq "Restore" -and $_.Status -eq "Completed"} | Sort-Object @{Expression="Endtime";Descending=$true} | Select-Object -First 1
   if(-not $RecoveryVHDJob) { 
     $Log.Error("リカバリジョブが存在しません")
     exit 9
@@ -177,7 +177,7 @@ try {
   $Log.Info("仮想マシンのデータディスク置換処理:開始")
   foreach($RecoveryDisk in $ConfigOBJ.'properties.storageProfile'.dataDisks) {
     if(-not $OSDiskOnly) {
-      $SourceDataDisk = $AzureVMInfo.StorageProfile.DataDisks | ? { $_.Lun -eq $RecoveryDisk.Lun }
+      $SourceDataDisk = $AzureVMInfo.StorageProfile.DataDisks | Where-Object { $_.Lun -eq $RecoveryDisk.Lun }
       if(-not $SourceDataDisk){
         $Log.Error("仮想マシンにLUNが一致するディスクが接続されてません。:" + $RecoveryDisk.Name)
         exit 9
