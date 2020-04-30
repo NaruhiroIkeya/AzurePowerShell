@@ -1,5 +1,5 @@
 <################################################################################
-## Copyright(c) 2019 BeeX Inc. All rights reserved.
+## Copyright(c) 2020 BeeX Inc. All rights reserved.
 ## @auther#Naruhiro Ikeya
 ##
 ## @name:ExecAzureBackupJob.ps1
@@ -31,6 +31,7 @@ param (
   [parameter(mandatory=$true)][int]$AddDays,
   [parameter(mandatory=$true)][int64]$JobTimeout,
   [switch]$Complete=$false,
+  [switch]$Eventlog,
   [switch]$Stdout
 )
 
@@ -49,17 +50,20 @@ New-Variable -Name ReturnState -Value @("Take Snapshot","Transfer data to vault"
 ##########################
 # 警告の表示抑止
 ##########################
-Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
+# Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
 
 ###############################
 # LogController オブジェクト生成
 ###############################
-if($Stdout) {
+if($Stdout -and $Eventlog) {
+  $Log = New-Object LogController($true, (Get-ChildItem $MyInvocation.MyCommand.Path).Name)
+} elseif($Stdout) {
   $Log = New-Object LogController
 } else {
   $LogFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath log -Resolve
   $LogFile = (Get-ChildItem $MyInvocation.MyCommand.Path).BaseName + ".log"
-  $Log = New-Object LogController($($LogFilePath + "\" + $LogFile), $false)
+  $Log = New-Object LogController($($LogFilePath + "\" + $LogFile), $false, $true, (Get-ChildItem $MyInvocation.MyCommand.Path).Name, $false)
+  $Log.DeleteLog($SaveDays)
 }
 
 ##########################
@@ -78,10 +82,9 @@ try {
   ##########################
   # Azureログオン処理
   ##########################
-  $SettingFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath etc -Resolve
-  $SettingFile = "AzureCredential.xml"
-  $SettingFileFull = $SettingFilePath + "\" + $SettingFile 
-  $Connect = New-Object AzureLogonFunction($SettingFileFull)
+  $CredenticialFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath etc -Resolve
+  $CredenticialFileFullPath = $CredenticialFilePath + "\" + $CredenticialFile 
+  $Connect = New-Object AzureLogonFunction($CredenticialFileFullPath)
   if($Connect.Initialize($Log)) {
     if(-not $Connect.Logon()) {
       exit 9
@@ -121,7 +124,7 @@ try {
   $Job = Backup-AzRecoveryServicesBackupItem -VaultId $RecoveryServiceVault.ID -Item $BackupItem -ExpiryDateTimeUTC $ExpiryDateUTC
   if($Job.Status -eq "Failed") {
     $Log.Error("Azure Backupジョブがエラー終了しました。")
-　　$Job | Format-List -DisplayError
+    $Log.Error($($Job | Format-List | Out-String -Stream))
     exit 9
   }
 
@@ -155,7 +158,7 @@ try {
   #################################################
   if($JobResult.Status -eq "Failed") {
     $Log.Error("Azure Backupジョブがエラー終了しました。")
-    $Log.Error($($JobResult | Format-List -DisplayError))
+    $Log.Error($($JobResult | Format-List | Out-String -Stream))
     exit 9
   } else {
     $Log.Info("Azure Backupジョブが完了しました。")

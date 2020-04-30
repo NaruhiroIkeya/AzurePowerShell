@@ -1,9 +1,9 @@
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-:: Copyright(c) 2019 BeeX Inc. All rights reserved.
+:: Copyright(c) 2020 BeeX Inc. All rights reserved.
 :: @auther:Naruhiro Ikeya
 ::
 :: @name:ExecAzureVMShutdown.bat
-:: @summary:ExecAzureVMShutdown.ps1 Wrapper
+:: @summary:AzureVMBootController.ps1 Wrapper
 ::
 :: @since:2019/01/17
 :: @version:1.0
@@ -21,6 +21,8 @@ SETLOCAL ENABLEDELAYEDEXPANSION
 ::      環境変数設定       ::
 :::::::::::::::::::::::::::::
 SET __LOG_CYCLE__=7
+SET __APL_PS1__=AzureVMBootController.ps1
+SET __EXPIRE_DAYS__=7
 
 :::::::::::::::::::::::::::::::::::
 ::      パラメータチェック       ::
@@ -32,7 +34,7 @@ IF %__ARGC__% neq 2 (
   SET __TIME__=%TIME:~0,8%
   SET __TIME__=!__TIME__: =0!
   ECHO [%DATE% !__TIME__!] Usage:%~n0 ResourceGroup名 AzureVM名
-  EXIT /B 1
+  EXIT /B %__ERROR_CODE__%
 ) 
 
 SET __RESOURCEGROUPNAME__=%1
@@ -61,24 +63,31 @@ FORFILES /P %__LOGPATH__% /M *.log /D -%__LOG_CYCLE__% /C "CMD /C IF @isdir==FAL
 ::::::::::::::::::::::::::::::::::::::
 ::      スクリプト本体存在確認      ::
 ::::::::::::::::::::::::::::::::::::::
-SET __PS_SCRIPT__=%~dp0AzureVMBootController.ps1
+SET __PS_SCRIPT__=%~dp0%__APL_PS1__%
 IF NOT EXIST %__PS_SCRIPT__% (
-  CALL :__ECHO__ AzureVM起動スクリプトが存在しません。
-  EXIT /B 1
+  CALL :__ECHO__ AzureVM停止スクリプトが存在しません。
+  EXIT /B %__ERROR_CODE__%
 )
 
 ::::::::::::::::::::::::::::::::::
 ::      スクリプト本体実行      ::
 ::::::::::::::::::::::::::::::::::
-CALL :__ECHO__ AzureVM停止処理（%__PS_SCRIPT__%）を開始します。
-powershell -NoProfile -inputformat none -command "%__PS_SCRIPT__% -Shutdown -Stdout %__RESOURCEGROUPNAME__% %__VMNAME__%;exit $LASTEXITCODE" >>"%__LOGFILE__%"
+CALL :__ECHO__ 仮想マシン停止処理（%__PS_SCRIPT__%）を開始します。
+if "%PROCESSOR_ARCHITECTURE%" EQU "x86" (
+    set EXEC_POWERSHELL="C:\Windows\sysnative\WindowsPowerShell\v1.0\powershell.exe"
+)
+if "%PROCESSOR_ARCHITECTURE%" EQU "AMD64" (
+    set EXEC_POWERSHELL="C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe"
+)
+
+%EXEC_POWERSHELL% -NoProfile -inputformat none -command "%__PS_SCRIPT__% -Shutdown -Stdout -ResourceGroupName %__RESOURCEGROUPNAME__% -AzureVMName %__VMNAME__%;exit $LASTEXITCODE" >>"%__LOGFILE__%"
 
 ::::::::::::::::::::::::::::::::::::::::::
 ::      スクリプト本体実行結果確認      ::
 ::::::::::::::::::::::::::::::::::::::::::
 IF ERRORLEVEL 1 (
   CALL :__ECHO__ AzureVM停止処理中にエラーが発生しました。
-  EXIT /B 1
+  EXIT /B %__ERROR_CODE__%
 )
 CALL :__ECHO__ AzureVM停止処理が完了しました。
 

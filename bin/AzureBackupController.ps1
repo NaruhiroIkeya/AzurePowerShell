@@ -1,5 +1,5 @@
 <################################################################################
-## Copyright(c) 2019 BeeX Inc. All rights reserved.
+## Copyright(c) 2020 BeeX Inc. All rights reserved.
 ## @auther#Naruhiro Ikeya
 ##
 ## @name:AzreBackupController.ps1
@@ -9,9 +9,9 @@
 ## @version:1.0
 ## @see:
 ## @parameter
-##  1:Azure VM名
-##  2:Azure VMリソースグループ名
-##  3:保存日数
+##  1:バックアップポリシー名
+##  2:有効化フラグ
+##  3:無効化フラグ
 ##
 ## @return:0:Success 9:エラー終了 / 99:Exception
 ################################################################################>
@@ -20,9 +20,11 @@
 # パラメータ設定
 ##########################
 param (
-  [String]$AzureVMBackupPolicyName,
-  [Switch]$EnableAzureBakup,
-  [Switch]$DisableAzureBakup
+  [string]$AzureVMBackupPolicyName,
+  [switch]$EnableAzureBakup,
+  [switch]$DisableAzureBakup,
+  [switch]$Eventlog=$false,
+  [switch]$Stdout
 )
 
 ##########################
@@ -35,20 +37,28 @@ param (
 # 固定値 
 ##########################
 Set-Variable -Name "ConstantPolicyName" -Value "CooperationJobSchedulerDummyPolicy" -Option Constant
-Set-Variable -Name "DisableHours" -Value 3 -Option Constant
+Set-Variable -Name "DisableHours" -Value 5 -Option Constant
+[string]$CredenticialFile = "AzureCredential_Secure.xml"
+[int]$SaveDays = 7
 
 ##########################
 # 警告の表示抑止
 ##########################
-Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
+# Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
 
 ###############################
 # LogController オブジェクト生成
 ###############################
-$LogFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath log -Resolve
-$LogFile = (Get-ChildItem $MyInvocation.MyCommand.Path).BaseName + ".log"
-$Log = New-Object LogController($($LogFilePath + "\" + $LogFile), $true)
-$Log.RotateLog(7)
+if($Stdout -and $Eventlog) {
+  $Log = New-Object LogController($true, (Get-ChildItem $MyInvocation.MyCommand.Path).Name)
+} elseif($Stdout) {
+  $Log = New-Object LogController
+} else {
+  $LogFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath log -Resolve
+  $LogFile = (Get-ChildItem $MyInvocation.MyCommand.Path).BaseName + ".log"
+  $Log = New-Object LogController($($LogFilePath + "\" + $LogFile), $false, $true, (Get-ChildItem $MyInvocation.MyCommand.Path).Name, $false)
+  $Log.DeleteLog($SaveDays)
+}
 
 ##########################
 # パラメータチェック
@@ -68,10 +78,9 @@ try {
   ##########################
   # Azureログオン処理
   ##########################
-  $SettingFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath etc -Resolve
-  $SettingFile = "AzureCredential.xml"
-  $SettingFileFull = $SettingFilePath + "\" + $SettingFile 
-  $Connect = New-Object AzureLogonFunction($SettingFileFull)
+  $CredenticialFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath etc -Resolve
+  $CredenticialFileFullPath = $CredenticialFilePath + "\" + $CredenticialFile 
+  $Connect = New-Object AzureLogonFunction($CredenticialFileFullPath)
   if($Connect.Initialize($Log)) {
     if(-not $Connect.Logon()) {
       exit 9
@@ -79,14 +88,14 @@ try {
   } else {
     exit 9
   }
-  
+
   $RecoveryServicesVaults = Get-AzRecoveryServicesVault
   foreach($Vault in $RecoveryServicesVaults) {
     $Log.Info("Recovery Service コンテナー:" + $Vault.Name)
     if(-not $AzureVMBackupPolicyName) {
       $AzureVMProtectionPolicies = Get-AzRecoveryServicesBackupProtectionPolicy -VaultId $Vault.ID -WorkloadType "AzureVM" 
     } else {
-      $AzureVMProtectionPolicies = Get-AzRecoveryServicesBackupProtectionPolicy -VaultId $Vault.ID | ? { $_.Name -eq $AzureVMBackupPolicyName }
+      $AzureVMProtectionPolicies = Get-AzRecoveryServicesBackupProtectionPolicy -VaultId $Vault.ID | Where-Object { $_.Name -eq $AzureVMBackupPolicyName }
       if((-not $AzureVMProtectionPolicies) -and $DisableAzureBakup) {
         $Log.Info("指定されたBackup Policyが見つかりません。:$AzureVMBackupPolicyName")
         exit 9
@@ -163,6 +172,7 @@ try {
         if(($Now -gt $RetentionTime) -or ($Now -le $DisableTime)) {
           $Log.Info($AzureVMProtectionPolicy.Name + "の有効化処理を開始します。")
         
+          $SettingFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath etc -Resolve
           $SettingFile = $AzureVMProtectionPolicy.Name + ".xml"
           $Log.Info("Backup Policyファイル名：" + $SettingFile)
           if(-not (Test-Path(Join-Path $SettingFilePath -ChildPath $SettingFile))) {

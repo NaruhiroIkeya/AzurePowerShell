@@ -1,5 +1,5 @@
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-:: Copyright(c) 2019 BeeX Inc. All rights reserved.
+:: Copyright(c) 2020 BeeX Inc. All rights reserved.
 :: @auther:Naruhiro Ikeya
 ::
 :: @name:ExecAzureBackupJob.bat
@@ -22,6 +22,7 @@ SETLOCAL ENABLEDELAYEDEXPANSION
 ::      環境変数設定       ::
 :::::::::::::::::::::::::::::
 SET __LOG_CYCLE__=7
+SET __EXPIRE_DAYS__=7
 
 :::::::::::::::::::::::::::::::::::
 ::      パラメータチェック       ::
@@ -66,21 +67,28 @@ FORFILES /P %__LOGPATH__% /M *.log /D -%__LOG_CYCLE__% /C "CMD /C IF @isdir==FAL
 ::::::::::::::::::::::::::::::::::::::
 IF NOT EXIST %~dpn0.ps1 (
   CALL :__ECHO__ Azure Backup実行スクリプト（%~n0.ps1）が存在しません。
-  EXIT /B 99
+  EXIT /B %__ERROR_CODE__%
 )
 
 ::::::::::::::::::::::::::::::::::
 ::      スクリプト本体実行      ::
 ::::::::::::::::::::::::::::::::::
 CALL :__ECHO__ Azure Backup実行処理（%~n0.ps1）を開始します。
-powershell -ExecutionPolicy RemoteSigned -NoProfile -inputformat none -command "%~dpn0.ps1 -Stdout %__VMNAME__% %__R_S_CONTAINER__% %__ADD_DAYS__% %__JOB_TIMEOUT__%;exit $LASTEXITCODE" >>"%__LOGFILE__%"
+if "%PROCESSOR_ARCHITECTURE%" EQU "x86" (
+    set EXEC_POWERSHELL="C:\Windows\sysnative\WindowsPowerShell\v1.0\powershell.exe"
+)
+if "%PROCESSOR_ARCHITECTURE%" EQU "AMD64" (
+    set EXEC_POWERSHELL="C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe"
+)
+
+%EXEC_POWERSHELL% -ExecutionPolicy RemoteSigned -NoProfile -inputformat none -command "%~dpn0.ps1 -Stdout %__VMNAME__% %__R_S_CONTAINER__% %__ADD_DAYS__% %__JOB_TIMEOUT__%;exit $LASTEXITCODE" >>"%__LOGFILE__%"
 
 ::::::::::::::::::::::::::::::::::::::::::
 ::      スクリプト本体実行結果確認      ::
 ::::::::::::::::::::::::::::::::::::::::::
 IF ERRORLEVEL 9 (
   CALL :__ECHO__ Azure Backup実行処理中にエラーが発生しました。
-  EXIT /B 99
+  EXIT /B %__ERROR_CODE__%
 )
 IF ERRORLEVEL 2 (
   CALL :__ECHO__ Azure Backup実行処理（Take Snapshotフェーズ）が完了しました。
@@ -88,7 +96,7 @@ IF ERRORLEVEL 2 (
 )
 IF ERRORLEVEL 1 (
   CALL :__ECHO__ Azure Bakup実行処理中にパラメータエラーが発生しました。
-  EXIT /B 1
+  EXIT /B %__ERROR_CODE__%
 )
 CALL :__ECHO__ Azure Backup実行処理が完了しました。
 

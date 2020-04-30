@@ -1,5 +1,5 @@
 <################################################################################
-## Copyright(c) 2019 BeeX Inc. All rights reserved.
+## Copyright(c) 2020 BeeX Inc. All rights reserved.
 ## @auther#Naruhiro Ikeya
 ##
 ## @name:AzureVMBootController.ps1
@@ -11,6 +11,9 @@
 ## @parameter
 ##  1:ResourceGroup名
 ##  2:AzureVM名
+##  3:起動処理モード
+##  4:停止処理モード
+##  5:標準出力
 ##
 ## @return:0:Success 1:パラメータエラー 2:Az command実行エラー 9:Exception
 ################################################################################>
@@ -23,6 +26,7 @@ param (
   [parameter(mandatory=$true)][string]$AzureVMName,
   [switch]$Boot,
   [switch]$Shutdown,
+  [switch]$Eventlog=$false,
   [switch]$Stdout
 )
 
@@ -35,21 +39,26 @@ param (
 ##########################
 # 固定値 
 ##########################
+[string]$CredenticialFile = "AzureCredential_Secure.xml"
+[int]$SaveDays = 7
 
 ##########################
 # 警告の表示抑止
 ##########################
-Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
+# Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
 
 ###############################
 # LogController オブジェクト生成
 ###############################
-if($Stdout) {
+if($Stdout -and $Eventlog) {
+  $Log = New-Object LogController($true, (Get-ChildItem $MyInvocation.MyCommand.Path).Name)
+} elseif($Stdout) {
   $Log = New-Object LogController
 } else {
   $LogFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath log -Resolve
   $LogFile = (Get-ChildItem $MyInvocation.MyCommand.Path).BaseName + ".log"
-  $Log = New-Object LogController($($LogFilePath + "\" + $LogFile), $false)
+  $Log = New-Object LogController($($LogFilePath + "\" + $LogFile), $false, $true, (Get-ChildItem $MyInvocation.MyCommand.Path).Name, $false)
+  $Log.DeleteLog($SaveDays)
 }
 
 ##########################
@@ -64,10 +73,9 @@ try {
   ##########################
   # Azureログオン処理
   ##########################
-  $SettingFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath etc -Resolve
-  $SettingFile = "AzureCredential.xml"
-  $SettingFileFull = $SettingFilePath + "\" + $SettingFile 
-  $Connect = New-Object AzureLogonFunction($SettingFileFull)
+  $CredenticialFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath etc -Resolve
+  $CredenticialFileFullPath = $CredenticialFilePath + "\" + $CredenticialFile 
+  $Connect = New-Object AzureLogonFunction($CredenticialFileFullPath)
   if($Connect.Initialize($Log)) {
     if(-not $Connect.Logon()) {
       exit 9
@@ -100,7 +108,7 @@ try {
   $Log.Info("$AzureVMName のステータスを取得します。")
   $AzureVMStatus = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $AzureVMName -Status | Select-Object @{n="Status"; e={$_.Statuses[1].Code}}
   if(-not $AzureVMStatus) { 
-    $Log.Info("AzureVMのステータスが取得できませんでした。")
+    $Log.Error("AzureVMのステータスが取得できませんでした。")
     exit 9
   } else {
     $Log.Info("現在のステータスは [" + $AzureVMStatus.Status + "] です。")
@@ -112,10 +120,10 @@ try {
     ##############################
     if(($AzureVMStatus.Status -eq "PowerState/deallocated") -or ($AzureVMStatus.Status -eq "PowerState/stopped")) { 
       $Log.Info("AzureVMを起動します。")
-      $JobResult = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $AzureVMName | % { Start-AzVM -ResourceGroupName $_.ResourceGroupName -Name $_.Name }
+      $JobResult = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $AzureVMName | ForEach-Object { Start-AzVM -ResourceGroupName $_.ResourceGroupName -Name $_.Name }
       if($JobResult.Status -eq "Failed") {
-        $Log.Info("AzureVM起動ジョブがエラー終了しました。")
-        $JobResult | Format-List -DisplayError
+        $Log.Error("AzureVM起動ジョブがエラー終了しました。")
+        $Log.Error($($JobResult | Format-List | Out-String -Stream))
         exit 9
       } else {
         $Log.Info("AzureVM起動ジョブが完了しました。")
@@ -131,10 +139,10 @@ try {
     ##############################
     if($AzureVMStatus.Status -eq "PowerState/running") { 
       $Log.Info("AzureVMを停止します。")
-      $JobResult = Get-AzVM -ResourceGroupName $ResourceGroupName  -Name $AzureVMName | % { Stop-AzVM -ResourceGroupName $_.ResourceGroupName -Name $_.Name -Force }
+      $JobResult = Get-AzVM -ResourceGroupName $ResourceGroupName  -Name $AzureVMName | ForEach-Object { Stop-AzVM -ResourceGroupName $_.ResourceGroupName -Name $_.Name -Force }
       if($JobResult.Status -eq "Failed") {
-        $Log.Info("AzureVM停止ジョブがエラー終了しました。")
-        $JobResult | Format-List -DisplayError
+        $Log.Error("AzureVM停止ジョブがエラー終了しました。")
+        $Log.Error($($JobResult | Format-List | Out-String -Stream))
         exit 9
       } else {
         $Log.Info("AzureVM停止ジョブが完了しました。")
@@ -146,13 +154,14 @@ try {
     }
   } else {
     $Log.Error("-Boot / -Shutdown 何れかのオプションを設定してください。")
+    exit 9
   }
   #################################################
   # エラーハンドリング
   #################################################
 } catch {
-    $Log.Error("AzureVMの起動処理中にエラーが発生しました。")
+    $Log.Error("AzureVMの起動/停止処理中にエラーが発生しました。")
     $Log.Error($_.Exception)
-    exit 99
+    exit 9
 }
 exit 0

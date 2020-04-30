@@ -1,5 +1,5 @@
 <################################################################################
-## Copyright(c) 2019 BeeX Inc. All rights reserved.
+## Copyright(c) 2020 BeeX Inc. All rights reserved.
 ## @auther#Naruhiro Ikeya
 ##
 ## @name:LogController.ps1
@@ -96,9 +96,10 @@ Class LogController {
   }
 
   hidden [void] Log([string]$Message, [int]$Saverity) {
-    if($this.StdOut) { [Console]::WriteLine("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] $message") }
+    #if($this.StdOut) { [Console]::WriteLine("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] $message") }
+    if($this.StdOut) { Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $this.LogType[$Saverity]  + " " + $message) | Out-Host }
     if($this.EventLog) { Write-EventLog -LogName Application -EntryType $this.EventType[$Saverity] -S $this.EventSource -EventId $this.EventID -Message $Message }
-    if($this.FullPath -ne $null) {
+    if($null -ne $this.FullPath) {
       # ログ出力
       Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $this.LogType[$Saverity]  + " " + $message) | Out-File -FilePath $this.FullPath -Encoding Default -append
     }
@@ -150,7 +151,6 @@ Class LogController {
   #####################################
   [void] DeleteLog([int] $Days) {
     $this.info("ログ削除処理を開始します。")
-    $Today = Get-Date
     Get-ChildItem -Path $this.LogDir | Where-Object {($_.Name -like $((Get-ChildItem $this.FullPath).BaseName)) -and ($_.Mode -eq "-a----") -and ($_.CreationTime -lt (Get-Date).AddDays(-1 * $Days))} | Remove-Item -Recurse -Force
     $this.info("ログ削除処理が完了しました。")
   }

@@ -20,7 +20,9 @@
 ##########################
 param (
   [parameter(mandatory=$true)][string]$AzureVMName,
-  [parameter(mandatory=$true)][string]$AzureVMResourceGroupName
+  [parameter(mandatory=$true)][string]$AzureVMResourceGroupName,
+  [parameter(mandatory=$true)][switch]$Eventlog=$false,
+  [parameter(mandatory=$true)][switch]$Stdout
 )
 
 ##########################
@@ -116,7 +118,7 @@ try {
   ##############################
   # Snapshot作成時間の一覧化
   ##############################
-  Get-AzSnapshot -ResourceGroupName $AzureVMResourceGroupName | ? { $_.Tags.SourceVMName -ne $null -and $_.Tags.SourceVMName -eq $AzureVMName } | sort {$_.tags.CreateDate} -unique | % { [void] $listBox.Items.Add($_.tags.CreateDate) } 
+  Get-AzSnapshot -ResourceGroupName $AzureVMResourceGroupName | Where-Object { $_.Tags.SourceVMName -ne $null -and $_.Tags.SourceVMName -eq $AzureVMName } | Sort-Object {$_.tags.CreateDate} -unique | ForEach-Object { [void] $listBox.Items.Add($_.tags.CreateDate) } 
   $form.Controls.Add($listBox)
   
   ##############################
@@ -139,7 +141,7 @@ try {
   ##############################
   $listBox.Items.Clear();  
   $listBox.SelectionMode = 'MultiExtended'
-  Get-AzSnapshot -ResourceGroupName $AzureVMResourceGroupName | ? { $_.tags.CreateDate -ne $null -and $_.tags.CreateDate -eq $RecoveryPoint } | % { [void] $listBox.Items.Add($_.Name) } 
+  Get-AzSnapshot -ResourceGroupName $AzureVMResourceGroupName | Where-Object { $_.tags.CreateDate -ne $null -and $_.tags.CreateDate -eq $RecoveryPoint } | ForEach-Object { [void] $listBox.Items.Add($_.Name) } 
   $form.Controls.Add($listBox)
   
   ##############################
@@ -150,7 +152,7 @@ try {
 
   if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
     $SelectedSnapshots = $listBox.SelectedItems
-    $SelectedSnapshots | % { Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $_ + "を復元します") }
+    $SelectedSnapshots | ForEach-Object { Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $_ + "を復元します") }
     Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] リカバリポイントの選択:完了")
   } elseif ($result -eq [System.Windows.Forms.DialogResult]::Cancel) {
     exit 0
@@ -158,9 +160,9 @@ try {
     exit 0
   }
 
-  $RecoverySnapshots = $SelectedSnapshots | % { Get-AzSnapshot  -ResourceGroupName $AzureVMResourceGroupName -SnapshotName $_ }
+  $RecoverySnapshots = $SelectedSnapshots | ForEach-Object { Get-AzSnapshot  -ResourceGroupName $AzureVMResourceGroupName -SnapshotName $_ }
   foreach($Snapshot in $RecoverySnapshots) {
-    if($Snapshot.Tags.SourceDiskName -eq $null -or $Snapshot.Tags.SourceDiskName -eq "") {
+    if($null -eq $Snapshot.Tags.SourceDiskName -or $Snapshot.Tags.SourceDiskName -eq "") {
       Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] ディスクのSnapshotにディスクの復元情報（Tag）が無い為リカバリできません。")
       exit 9
     }
@@ -178,12 +180,11 @@ try {
     exit 9
   }
 
-
   ########################################
   ## データディスクのデタッチ
   ########################################
   Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] データディスクのデタッチ:開始")
-  $Results = $RecoverySnapshots | % { Remove-AzVMDataDisk -VM $AzureVMInfo -Name $_.Tags.SourceDiskName }
+  $Results = $RecoverySnapshots | ForEach-Object { Remove-AzVMDataDisk -VM $AzureVMInfo -Name $_.Tags.SourceDiskName }
   foreach($Result in $Results) {
     Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] データディスクのデタッチ:" + $Result.ProvisioningState)
   }
@@ -200,7 +201,7 @@ try {
   ## データディスクの削除
   ########################################
   Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] データディスク削除処理:開始")
-  $Results = $RecoverySnapshots | % { Remove-AzDisk -ResourceGroupName $AzureVMInfo.ResourceGroupName -DiskName $_.Tags.SourceDiskName -Force }
+  $Results = $RecoverySnapshots | ForEach-Object { Remove-AzDisk -ResourceGroupName $AzureVMInfo.ResourceGroupName -DiskName $_.Tags.SourceDiskName -Force }
   foreach($Result in $Results) {
     Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] データディスクの削除:" + $Result.Status)
   }
@@ -210,7 +211,7 @@ try {
   ## 選択されたリカバリポイントのスナップショットを復元
   #######################################################
   Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] データディスクの復元処理:開始")
-  $RecoveredDisks = $RecoverySnapshots | % { New-AzDiskConfig -Location $_.Location -SourceResourceId $_.Id -CreateOption Copy -Tag $_.Tags } | % { New-AzDisk -Disk $_ -ResourceGroupName $AzureVMResourceGroupName -DiskName $_.Tags.SourceDiskName } | % { Add-AzVMDataDisk -VM $AzureVMInfo -Name $_.Name -ManagedDiskId $_.Id -Lun $_.Tags.SourceLun -Caching ReadOnly -CreateOption Attach }
+  $RecoveredDisks = $RecoverySnapshots | ForEach-Object { New-AzDiskConfig -Location $_.Location -SourceResourceId $_.Id -CreateOption Copy -Tag $_.Tags } | ForEach-Object { New-AzDisk -Disk $_ -ResourceGroupName $AzureVMResourceGroupName -DiskName $_.Tags.SourceDiskName } | ForEach-Object { Add-AzVMDataDisk -VM $AzureVMInfo -Name $_.Name -ManagedDiskId $_.Id -Lun $_.Tags.SourceLun -Caching ReadOnly -CreateOption Attach }
   foreach($Result in $RecoveredDisks) {
     Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] データディスクの復元:" + $Result.ProvisioningState)
   }

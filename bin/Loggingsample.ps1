@@ -24,6 +24,3 @@ $connect.Initialize($log)
 if($connect.logon()) {
  "OK"
 }
-
-
-
