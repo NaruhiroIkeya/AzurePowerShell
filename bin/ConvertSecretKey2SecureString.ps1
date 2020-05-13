@@ -59,7 +59,7 @@ try {
   $Connect = New-Object AzureLogonFunction($(Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath etc -Resolve), $CredenticialFile)
   $Connect.ConvertSecretKeytoSecureString($SecureCredenticialFile) 
   
-  $Log.Error("ログオンテストを実施します。")
+  $Log.Info("ログオンテストを実施します。")
   $Connect = New-Object AzureLogonFunction($(Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath etc -Resolve), $SecureCredenticialFile)
   if($Connect.Initialize($Log)) {
     if(-not $Connect.Logon()) {
