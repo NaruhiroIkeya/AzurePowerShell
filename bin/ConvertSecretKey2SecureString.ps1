@@ -49,7 +49,7 @@ if($Stdout) {
   $LogFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath log -Resolve
   $LogFile = (Get-ChildItem $MyInvocation.MyCommand.Path).BaseName + ".log"
   $Log = New-Object LogController($($LogFilePath + "\" + $LogFile), $false, $true, (Get-ChildItem $MyInvocation.MyCommand.Path).Name, $false)
-  $Log.Delete($SaveDays)
+  $Log.DeleteLog($SaveDays)
 }
 
 try {
