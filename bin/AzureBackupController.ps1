@@ -113,7 +113,7 @@ try {
     } else {
       $AzureVMProtectionPolicies = Get-AzRecoveryServicesBackupProtectionPolicy -VaultId $Vault.ID | Where-Object { $_.Name -eq $AzureVMBackupPolicyName }
       if((-not $AzureVMProtectionPolicies) -and $DisableAzureBakup) {
-        $Log.Info("指定されたBackup Policyが見つかりません。:$AzureVMBackupPolicyName")
+        $Log.Error("指定されたBackup Policyが見つかりません。:$AzureVMBackupPolicyName")
         exit 9
       } 
     }
