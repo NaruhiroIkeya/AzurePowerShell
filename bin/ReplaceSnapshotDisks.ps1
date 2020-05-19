@@ -47,8 +47,15 @@ if($Stdout) {
   $Log = New-Object LogController
 } else {
   $LogFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath log -Resolve
-  $LogFile = (Get-ChildItem $MyInvocation.MyCommand.Path).BaseName + ".log"
-  $Log = New-Object LogController($($LogFilePath + "\" + $LogFile), $false)
+  if($MyInvocation.ScriptName -eq "") {
+    $LogBaseName = (Get-ChildItem $MyInvocation.MyCommand.Path).BaseName
+  } else {
+    $LogBaseName = (Get-ChildItem $MyInvocation.ScriptName).BaseName
+  }
+  $LogFileName = $LogBaseName + ".log"
+  $Log = New-Object LogController($($LogFilePath + "\" + $LogFileName), $false, $true, $LogBaseName, $false)
+  $Log.DeleteLog($SaveDays)
+  $Log.Info("ログファイル名:$($Log.GetLogInfo())")
 }
 
 try {

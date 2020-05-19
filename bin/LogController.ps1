@@ -47,8 +47,11 @@ Class LogController {
     #####################################
     # EventLog書き込み用ソース情報登録
     #####################################
-    if ([System.Diagnostics.EventLog]::SourceExists($EventSource) -eq $false) {
-        [System.Diagnostics.EventLog]::CreateEventSource($EventSource, "Application")
+    if($EventLog -and (-not $EventSource)) { $this.EventSource=$(Get-ChildItem $MyInvocation.MyCommand.Path).Name } 
+    if($EventLog -and (-not $EventSource)) {
+      if ([System.Diagnostics.EventLog]::SourceExists($EventSource) -eq $false) {
+          [System.Diagnostics.EventLog]::CreateEventSource($EventSource, "Application")
+      }
     }
   }
 
@@ -76,8 +79,11 @@ Class LogController {
     #####################################
     # EventLog書き込み用ソース情報登録
     #####################################
-    if ([System.Diagnostics.EventLog]::SourceExists($EventSource) -eq $false) {
-        [System.Diagnostics.EventLog]::CreateEventSource($EventSource, "Application")
+    if($EventLog -and (-not $EventSource)) { $this.EventSource=$(Get-ChildItem $MyInvocation.MyCommand.Path).Name } 
+    if($EventLog -and $EventSource) {
+      if ([System.Diagnostics.EventLog]::SourceExists($EventSource) -eq $false) {
+          [System.Diagnostics.EventLog]::CreateEventSource($EventSource, "Application")
+      }
     }
 
     $this.InitializeLog()
@@ -158,5 +164,5 @@ Class LogController {
   #####################################
   # ログファイル名取得
   #####################################
-  [string] getLogInfo(){ return [Console]::WriteLine("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] ログファイル名:" + $this.FullPath) }
+  [string] getLogInfo(){ return $this.FullPath }
 }
