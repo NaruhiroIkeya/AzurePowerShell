@@ -27,7 +27,7 @@ param (
   [switch]$Boot,
   [switch]$Shutdown,
   [switch]$Eventlog=$false,
-  [switch]$Stdout
+  [switch]$Stdout=$false
 )
 
 ##########################

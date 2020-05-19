@@ -25,7 +25,7 @@ param (
   [switch]$EnableAzureBakup,
   [switch]$DisableAzureBakup,
   [switch]$Eventlog=$false,
-  [switch]$Stdout
+  [switch]$Stdout=$false
 )
 
 ##########################

@@ -31,8 +31,8 @@ param (
   [parameter(mandatory=$true)][int]$AddDays,
   [parameter(mandatory=$true)][int64]$JobTimeout,
   [switch]$Complete=$false,
-  [switch]$Eventlog,
-  [switch]$Stdout
+  [switch]$Eventlog=$false,
+  [switch]$Stdout=$false
 )
 
 ##########################
