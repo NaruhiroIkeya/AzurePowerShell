@@ -49,7 +49,7 @@ try {
     exit 9
   }
 
-  Get-AzResource | ?{ $_.Name -match $AzureVMName } | %{ Set-AzResource -Tag @{ Company=$CompanyTagName; System=$SystemTagName; Server=$_.Name } -ResourceID  $_.ResourceId -Force }
+  Get-AzResource | Where-Object{ $_.Name -match $AzureVMName } | ForEach-Object{ Set-AzResource -Tag @{ Company=$CompanyTagName; System=$SystemTagName; Server=$_.Name } -ResourceID  $_.ResourceId -Force }
 
 } catch {
     Write-Output("`r`n`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] 仮想マシンの復元処理中にエラーが発生しました。")
