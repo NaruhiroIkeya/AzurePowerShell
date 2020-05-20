@@ -22,8 +22,8 @@
 param (
   [string]$RecoveryServicesVaultName=$null,
   [string]$AzureVMBackupPolicyName=$null,
-  [switch]$EnableAzureBakup,
-  [switch]$DisableAzureBakup,
+  [switch]$EnableAzureBackup,
+  [switch]$DisableAzureBackup,
   [switch]$Eventlog=$false,
   [switch]$Stdout=$false
 )
@@ -70,8 +70,8 @@ if($Stdout -and $Eventlog) {
 ##########################
 # パラメータチェック
 ##########################
-if ($EnableAzureBakup -xor $DisableAzureBakup) {
-  if ($EnableAzureBakup) {
+if ($EnableAzureBackup -xor $DisableAzureBackup) {
+  if ($EnableAzureBackup) {
     $Log.Info("Azure Backupを有効化します。")
     $StatusString="有効化"
   } else {
@@ -118,7 +118,7 @@ try {
       $AzureVMProtectionPolicies = Get-AzRecoveryServicesBackupProtectionPolicy -VaultId $Vault.ID -WorkloadType "AzureVM" 
     } else {
       $AzureVMProtectionPolicies = Get-AzRecoveryServicesBackupProtectionPolicy -VaultId $Vault.ID | Where-Object { $_.Name -eq $AzureVMBackupPolicyName }
-      if((-not $AzureVMProtectionPolicies) -and $DisableAzureBakup) {
+      if((-not $AzureVMProtectionPolicies) -and $DisableAzureBackup) {
         $Log.Error("指定されたBackup Policyが見つかりません。:$AzureVMBackupPolicyName")
         exit 9
       } 
@@ -164,13 +164,13 @@ try {
         $RetaintionTime = $AzureVMProtectionPolicy.RetentionPolicy.YearlySchedule.RetentionTimes[0].toString("HH:mm")
       }
 
-      if($EnableAzureBakup -and (($Now -gt $RetentionTime) -or ($Now -le $DisableTime))) {
+      if($EnableAzureBackup -and (($Now -gt $RetentionTime) -or ($Now -le $DisableTime))) {
         $Log.Info($AzureVMProtectionPolicy.Name + "の有効化処理を開始します。")
-      } elseif($DisableAzureBakup -and (($DisableTime -le $Now) -and ($Now -lt $RetentionTime))) {
+      } elseif($DisableAzureBackup -and (($DisableTime -le $Now) -and ($Now -lt $RetentionTime))) {
         $Log.Info($AzureVMProtectionPolicy.Name + "の無効化処理を開始します。")
       } else {
-        if($EnableAzureBakup) { $Log.Info($AzureVMProtectionPolicy.Name + "の有効化可能時間帯は ～" + $DisableTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm") + "までです。" + $RetentionTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm") + "以降に再有効化可能です。") }
-        if($DisableAzureBakup) { $Log.Info($AzureVMProtectionPolicy.Name + "の無効化可能時間帯は " + $DisableTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm") + "～" + $RetentionTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm") + "です。") }
+        if($EnableAzureBackup) { $Log.Info($AzureVMProtectionPolicy.Name + "の有効化可能時間帯は ～" + $DisableTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm") + "までです。" + $RetentionTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm") + "以降に再有効化可能です。") }
+        if($DisableAzureBackup) { $Log.Info($AzureVMProtectionPolicy.Name + "の無効化可能時間帯は " + $DisableTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm") + "～" + $RetentionTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm") + "です。") }
         continue
       }
 
@@ -189,13 +189,13 @@ try {
       foreach($Container in $RegisterdVMsContainer) {
         $BackupItem = Get-AzRecoveryServicesBackupItem -VaultId $Vault.ID -Container $Container -WorkloadType AzureVM 
         foreach($AzureVM in $BackupPolicyConfig.BackupPolicy.VM) {
-          if($EnableAzureBakup -and $BackupItem.ProtectionPolicyName) {
+          if($EnableAzureBackup -and $BackupItem.ProtectionPolicyName) {
             $Log.Info($Container.FriendlyName + "は" + $StatusString + "済です。")
             break
-          } elseif($DisableAzureBakup -and $null -eq $BackupItem.ProtectionPolicyName) {
+          } elseif($DisableAzureBackup -and $null -eq $BackupItem.ProtectionPolicyName) {
             $Log.Info($Container.FriendlyName + "は" + $StatusString + "済です。")
             break
-          } elseif($EnableAzureBakup -and ($Container.FriendlyName -eq $AzureVM.Name)) {
+          } elseif($EnableAzureBackup -and ($Container.FriendlyName -eq $AzureVM.Name)) {
             ############################
             # 有効化バックグラウンド実行
             ############################
@@ -215,7 +215,7 @@ try {
             }
             Start-Job $BackgroundJob -ArgumentList $Vault.Name, $Container.FriendlyName, $AzureVMProtectionPolicy.Name
             $Log.Info($Container.FriendlyName + "のAzure Backupジョブを" + $StatusString + "しました。")
-          } elseif($DisableAzureBakup -and ($AzureVMProtectionPolicy.Name -eq $BackupItem.ProtectionPolicyName) -and ($Container.FriendlyName -eq $AzureVM.Name)) {
+          } elseif($DisableAzureBackup -and ($AzureVMProtectionPolicy.Name -eq $BackupItem.ProtectionPolicyName) -and ($Container.FriendlyName -eq $AzureVM.Name)) {
             $BackgroundJob = {
               param([string]$VaultName, [string]$VMName)
               try {
