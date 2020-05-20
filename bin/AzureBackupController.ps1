@@ -192,7 +192,7 @@ try {
           if($EnableAzureBackup -and $BackupItem.ProtectionPolicyName) {
             $Log.Info($Container.FriendlyName + "は" + $StatusString + "済です。")
             break
-          } elseif($DisableAzureBackup -and $null -eq $BackupItem.ProtectionPolicyName) {
+          } elseif($DisableAzureBackup -and ($null -eq $BackupItem.ProtectionPolicyName)) {
             $Log.Info($Container.FriendlyName + "は" + $StatusString + "済です。")
             break
           } elseif($EnableAzureBackup -and ($Container.FriendlyName -eq $AzureVM.Name)) {
@@ -213,8 +213,9 @@ try {
                 throw
               } 
             }
-            Start-Job $BackgroundJob -ArgumentList $Vault.Name, $Container.FriendlyName, $AzureVMProtectionPolicy.Name
-            $Log.Info($Container.FriendlyName + "のAzure Backupジョブを" + $StatusString + "しました。")
+            $JobResult = Start-Job $BackgroundJob -ArgumentList $Vault.Name, $Container.FriendlyName, $AzureVMProtectionPolicy.Name
+            $Log.Info($Container.FriendlyName + "のAzure Backupジョブを" + $StatusString + "しました。JobID = " + $JobResult.Id)
+            break
           } elseif($DisableAzureBackup -and ($AzureVMProtectionPolicy.Name -eq $BackupItem.ProtectionPolicyName) -and ($Container.FriendlyName -eq $AzureVM.Name)) {
             $BackgroundJob = {
               param([string]$VaultName, [string]$VMName)
@@ -229,11 +230,9 @@ try {
                 throw
               } 
             }
-            Start-Job $BackgroundJob -ArgumentList $Vault.Name, $Container.FriendlyName, $AzureVMProtectionPolicy.Name
-            $Log.Info($Container.FriendlyName + "のAzure Backupジョブを" + $StatusString + "しました。")
-          } else {
-            $Log.Info("$($StatusString)対象VMが存在しませんでした。")
-            Continue
+            $JobResult = Start-Job $BackgroundJob -ArgumentList $Vault.Name, $Container.FriendlyName, $AzureVMProtectionPolicy.Name
+            $Log.Info($Container.FriendlyName + "のAzure Backupジョブを" + $StatusString + "しました。JobID = " + $JobResult.Id)
+            break
           }
         }
       }
@@ -242,9 +241,9 @@ try {
     # バックグラウンドジョブの完了待ち
     ######################################
     $Log.Info("バックグラウンドジョブ完了待ち")
-    $JobLists=Get-Job | Wait-Job
-    if($JobLists) { 
-      $Log.Info($($JobLists| Receive-Job))
+    $JobResults=Get-Job | Wait-Job -Timeout 600
+    foreach($JobResult in $JobResults) { 
+      $Log.Info("Id:$($JobResult.Id) State:$($JobResult.JobStateInfo.State)")
     } 
     ######################################
     # バックグラウンドジョブの削除
