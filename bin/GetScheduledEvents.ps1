@@ -39,11 +39,11 @@ if($null -ne $ScheduledEvents) {
     ###############################################
     # イベントがFreezeだったら、メモリ保持メンテナンスの通知
     ###############################################
-    if(($Event.EventType -eq "Freeze") -or ($Event.EventType -eq "Reboot") -or ($Event.EventType -eq "Redeploy") -or ($Event.EventType -eq "Preempt")){
-      $JPNTime = [DateTime]$Event.NotBefore
+    if($Event.EventType -ne "Terminate"){
+      $JSTTime = [DateTime]$Event.NotBefore
       foreach($Resouce in $Event.Resources) {
         $HostName = $Resouce
-        $Message += "HostName:$($HostName) でメンテナンス（$($Event.EventType)）が始まります。$JPNTime`n"
+        $Message += "HostName:$($HostName) でメンテナンス（$($Event.EventType)）が始まります。$JSTTime`n"
       }
       $Saverity = 3
     } else {
