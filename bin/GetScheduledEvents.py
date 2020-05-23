@@ -40,9 +40,9 @@ def main():
     datetime_utc = datetime.datetime.strptime(timestring, "%a, %d %b %Y %H:%M:%S%z")
     datetime_jst = datetime_utc.astimezone(datetime.timezone(datetime.timedelta(hours=+9)))
     NotBefore_jst = datetime.datetime.strftime(datetime_jst, "%a, %d %b %Y %H:%M:%S %Z")
-    if eventtype != "Terminate":
-      if this_host in resources:
-        print("+ Scheduled Event. This host " + this_host + " is scheduled for " + eventtype + " not before " + NotBefore_jst)
+    if eventtype != 'Terminate':
+      for this_host in resources:
+        print("Scheduled Event. This host " + this_host + " is scheduled for " + eventtype + " not before " + NotBefore_jst)
 
 if __name__ == '__main__':
   main()
