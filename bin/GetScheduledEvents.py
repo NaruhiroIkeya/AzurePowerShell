@@ -30,7 +30,7 @@ def main():
   data = json.loads(resp.read().decode('utf-8'))
 
   for evt in data['Events']:
-    eventid = evt['EventId']
+#    eventid = evt['EventId']
     status = evt['EventStatus']
     resources = evt['Resources']
     eventtype = evt['EventType']
