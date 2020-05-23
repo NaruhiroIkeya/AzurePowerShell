@@ -28,8 +28,6 @@ def main():
   resp = urllib.request.urlopen(req)
   data = json.loads(resp.read().decode('utf-8'))
 
-  print(json.dumps(data, indent=2))
-
   for evt in data['Events']:
     eventid = evt['EventId']
     status = evt['EventStatus']
@@ -40,9 +38,10 @@ def main():
     datetime_utc = datetime.datetime.strptime(timestring, "%a, %d %b %Y %H:%M:%S%z")
     datetime_jst = datetime_utc.astimezone(datetime.timezone(datetime.timedelta(hours=+9)))
     NotBefore_jst = datetime.datetime.strftime(datetime_jst, "%a, %d %b %Y %H:%M:%S %Z")
-    if eventtype != 'Terminate':
+    if status == 'Scheduled' and resourcetype == 'VirtualMachine' and eventtype != 'Terminate':
       for this_host in resources:
         print("Scheduled Event. This host " + this_host + " is scheduled for " + eventtype + " not before " + NotBefore_jst)
+        print(json.dumps(data, indent=2))
 
 if __name__ == '__main__':
   main()
