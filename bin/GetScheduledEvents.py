@@ -3,10 +3,10 @@
 ## Copyright(c) 2020 BeeX Inc. All rights reserved.
 ## @auther#Naruhiro Ikeya
 ##
-## @name:GetSheduledEvents.ps1
+## @name:GetSheduledEvents.py
 ## @summary:Azure VM Sheduled Events(Azure Metadata Service)
 ##
-## @since:2020/05/21
+## @since:2020/05/23
 ## @version:1.0
 ## @see:
 ## @parameter
