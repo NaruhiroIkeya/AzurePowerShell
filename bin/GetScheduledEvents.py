@@ -17,7 +17,7 @@
 import json
 import socket
 import urllib.request
-from datetime import datetime
+import datetime
 
 metadata_url = "http://169.254.169.254/metadata/scheduledevents?api-version=2019-01-01"
 this_host = socket.gethostname()
