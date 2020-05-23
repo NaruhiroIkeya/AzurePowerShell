@@ -18,6 +18,7 @@ import json
 import socket
 import urllib.request
 import datetime
+import syslog
 
 metadata_url = "http://169.254.169.254/metadata/scheduledevents?api-version=2019-01-01"
 this_host = socket.gethostname()
@@ -40,8 +41,8 @@ def main():
     NotBefore_jst = datetime.datetime.strftime(datetime_jst, "%a, %d %b %Y %H:%M:%S %Z")
     if status == 'Scheduled' and resourcetype == 'VirtualMachine' and eventtype != 'Terminate':
       for this_host in resources:
-        print("Scheduled Event. This host " + this_host + " is scheduled for " + eventtype + " not before " + NotBefore_jst)
-        print(json.dumps(data, indent=2))
+        syslog.syslog("Scheduled Event. This host " + this_host + " is scheduled for " + eventtype + " not before " + NotBefore_jst)
+        syslog.syslog(json.dumps(data, indent=2))
 
 if __name__ == '__main__':
   main()
