@@ -143,11 +143,11 @@ try {
       } elseif($AzureVMProtectionPolicy.RetentionPolicy.IsWeeklyScheduleEnabled) {
         $RetaintionTime = $AzureVMProtectionPolicy.RetentionPolicy.WeeklySchedule.RetentionTimes[0].toString("HH:mm")
 
-        $Today = Get-Date
-        if($Today.DayOfWeek -eq $AzureVMProtectionPolicy.RetentionPolicy.WeeklySchedule.DaysOfTheWeek) {
-          $UTCDate = $Today.AddHours($DisableHours).ToUniversalTime().ToString("yyyy/MM/dd")
+        $UTCToday = (Get-Date).ToUniversalTime()
+        if($UTCToday.DayOfWeek -eq $AzureVMProtectionPolicy.RetentionPolicy.WeeklySchedule.DaysOfTheWeek) {
+          $UTCDate = $UTCToday.AddHours($DisableHours).ToString("yyyy/MM/dd")
         } else {
-          $UTCDate = ($Today.AddDays((6 - $Today.DayOfWeek + [DayOfWeek]::$($AzureVMProtectionPolicy.RetentionPolicy.WeeklySchedule.DaysOfTheWeek)) % 7 + 1)).AddHours($DisableHours).ToUniversalTime().ToString("yyyy/MM/dd")
+          $UTCDate = ($UTCToday.AddDays((6 - $UTCToday.DayOfWeek + [DayOfWeek]::$($AzureVMProtectionPolicy.RetentionPolicy.WeeklySchedule.DaysOfTheWeek)) % 7 + 1)).AddHours($DisableHours).ToString("yyyy/MM/dd")
         }
         $RetentionTime = Get-Date -Date $($UTCDate + " " + $RetaintionTime)
         $DisableTime = $RetentionTime.AddHours(-1 * $DisableHours)
