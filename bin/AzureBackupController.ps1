@@ -217,6 +217,9 @@ try {
             $Log.Info($Container.FriendlyName + "のAzure Backupジョブを" + $StatusString + "しました。JobID = " + $JobResult.Id)
             break
           } elseif($DisableAzureBackup -and ($AzureVMProtectionPolicy.Name -eq $BackupItem.ProtectionPolicyName) -and ($Container.FriendlyName -eq $AzureVM.Name)) {
+            ############################
+            # 無効化バックグラウンド実行
+            ############################
             $BackgroundJob = {
               param([string]$VaultName, [string]$VMName)
               try {
