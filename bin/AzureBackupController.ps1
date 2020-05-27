@@ -149,6 +149,7 @@ try {
         $UTCNow = (Get-Date).ToUniversalTime()
         ########################################################
         # 曜日が異なっていたら次回のバックアップ日を算出
+        # バックアップ時間を過ぎてたら次回のバックアップは翌週
         ########################################################
         if($UTCNow.DayOfWeek -eq $AzureVMProtectionPolicy.RetentionPolicy.WeeklySchedule.DaysOfTheWeek) {
           if ($AzureVMProtectionPolicy.SchedulePolicy.ScheduleRunTimes[0].TimeOfDay -gt $UTCNow.TimeOfDay) {
