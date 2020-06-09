@@ -22,6 +22,7 @@ Class LogController {
   [int] $EventID = 6338
   [String] $EventSource
   [String] $FullPath
+  [String] $LogBaseName
   [bool] $Generation
   [string]$LogDir
   [hashtable] $Saverity = @{info = 1; warn = 2; err = 3}
@@ -122,7 +123,11 @@ Class LogController {
     if(-not (Test-Path($this.LogDir))) {
       New-Item $this.LogDir -Type Directory
     }
+    #####################################
+    # タイムスタンプ形式のログファイル作成 
+    #####################################
     if(-not $this.Generation) {
+      $this.LogBaseName = [System.IO.Path]::GetFileNameWithoutExtension($this.FullPath)
       $this.FullPath = $($this.LogDir + "\" + [System.IO.Path]::GetFileNameWithoutExtension($this.FullPath) + "_" + (Get-Date -UFormat "%Y%m%d%H%M") + [System.IO.Path]::GetExtension($this.FullPath))
     }
   }
@@ -157,7 +162,7 @@ Class LogController {
   #####################################
   [void] DeleteLog([int] $Days) {
     $this.info("ログ削除処理を開始します。")
-    Get-ChildItem -Path $this.LogDir | Where-Object {($_.Name -like $((Get-ChildItem $this.FullPath).BaseName)) -and ($_.Mode -eq "-a----") -and ($_.CreationTime -lt (Get-Date).AddDays(-1 * $Days))} | Remove-Item -Recurse -Force
+    Get-ChildItem -Path $this.LogDir | Where-Object {($_.Name -like "$($this.LogBaseName)*") -and ($_.Mode -eq "-a----") -and ($_.CreationTime -lt (Get-Date).AddDays(-1 * $Days))} | Remove-Item -Recurse -Force
     $this.info("ログ削除処理が完了しました。")
   }
 
