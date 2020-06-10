@@ -151,23 +151,22 @@ try {
         # 曜日が異なっていたら次回のバックアップ日を算出
         # バックアップ時間を過ぎてたら次回のバックアップは翌週
         ########################################################
-        if($UTCNow.DayOfWeek -eq $AzureVMProtectionPolicy.RetentionPolicy.WeeklySchedule.DaysOfTheWeek) {
-          if ($AzureVMProtectionPolicy.SchedulePolicy.ScheduleRunTimes[0].TimeOfDay -gt $UTCNow.TimeOfDay) {
-            $RunDate = $UTCNow.ToString("yyyy/MM/dd")
-          } else {
-            $RunDate = $UTCNow.AddDays(7).tostring("yyyy/MM/dd")
-          }
+        $RunDayOfWeek = $AzureVMProtectionPolicy.SchedulePolicy.ScheduleRunDays[0]
+        $RunTimeOfDay = $AzureVMProtectionPolicy.SchedulePolicy.ScheduleRunTimes[0].TimeOfDay 
+        if(($UTCNow.DayOfWeek -eq $RunDayOfWeek) -and ($UTCNow.TimeOfDay -lt $RunTimeOfDay)) {
+          $RunDate = $UTCNow.ToString("yyyy/MM/dd")
         } else {
-          $RunDate = ($UTCNow.AddDays((6 - $UTCNow.DayOfWeek + [DayOfWeek]::$($AzureVMProtectionPolicy.RetentionPolicy.WeeklySchedule.DaysOfTheWeek)) % 7 + 1)).ToString("yyyy/MM/dd")
+          $AddDaysVaule = (6 - $UTCNow.DayOfWeek + [DayOfWeek]::$($AzureVMProtectionPolicy.SchedulePolicy.ScheduleRunDays[0])) % 7 + 1
+          $RunDate = ($UTCNow.AddDays($AddDaysVaule)).ToString("yyyy/MM/dd")
         }
-        $BackupTime = Get-Date -Date $($RunDate + " " + $AzureVMProtectionPolicy.SchedulePolicy.ScheduleRunTimes[0].toString("HH:mm"))
+        $RunTime = $AzureVMProtectionPolicy.SchedulePolicy.ScheduleRunTimes[0].toString("HH:mm")
+        $BackupTime = (Get-Date -Date $("$RunDate $Runtime +00:00")).ToUniversalTime()
       }
       $DisableTime = $BackupTime.AddHours(-1 * $DisableHours)
-      $Now = (Get-Date).ToUniversalTime()
 
-      if($EnableAzureBackup -and (($Now -gt $BackupTime) -or ($Now -le $DisableTime))) {
+      if($EnableAzureBackup -and (($UTCNow -gt $BackupTime) -or ($UTCNow -le $DisableTime))) {
         $Log.Info($AzureVMProtectionPolicy.Name + "の有効化処理を開始します。")
-      } elseif($DisableAzureBackup -and (($DisableTime -le $Now) -and ($Now -lt $BackupTime))) {
+      } elseif($DisableAzureBackup -and (($DisableTime -le $UTCNow) -and ($UTCNow -lt $BackupTime))) {
         $Log.Info($AzureVMProtectionPolicy.Name + "の無効化処理を開始します。")
       } else {
         if($EnableAzureBackup) { $Log.Info($AzureVMProtectionPolicy.Name + "の有効化可能時間帯は ～" + $DisableTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm") + "までです。" + $BackupTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm") + "以降に再有効化可能です。") }
@@ -215,7 +214,7 @@ try {
               } 
             }
             $JobResult = Start-Job $BackgroundJob -ArgumentList $Vault.Name, $Container.FriendlyName, $AzureVMProtectionPolicy.Name
-            $Log.Info($Container.FriendlyName + "のAzure Backupジョブを" + $StatusString + "しました。JobID = " + $JobResult.Id)
+            $Log.Info($Container.FriendlyName + "のAzure Backup" + $StatusString + "ジョブを実行しました。JobID = " + $JobResult.Id)
             break
           } elseif($DisableAzureBackup -and ($AzureVMProtectionPolicy.Name -eq $BackupItem.ProtectionPolicyName) -and ($Container.FriendlyName -eq $AzureVM.Name)) {
             ############################
@@ -235,7 +234,8 @@ try {
               } 
             }
             $JobResult = Start-Job $BackgroundJob -ArgumentList $Vault.Name, $Container.FriendlyName, $AzureVMProtectionPolicy.Name
-            $Log.Info($Container.FriendlyName + "のAzure Backupジョブを" + $StatusString + "しました。JobID = " + $JobResult.Id)
+            $Log.Info($Container.FriendlyName + "のAzure Backup" + $StatusString + "ジョブを実行しました。JobID = " + $JobResult.Id)
+            $Log.Info($BackupTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm") + " のバックアップジョブをスキップします。")
             break
           }
         }
