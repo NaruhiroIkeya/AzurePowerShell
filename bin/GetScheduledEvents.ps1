@@ -37,7 +37,7 @@ $ScheduledEvents = Invoke-RestMethod -Headers @{"Metadata"="true"} -URI $Schedul
 if($null -ne $ScheduledEvents) {
   foreach($Event in $ScheduledEvents.Events) {
     ###############################################
-    # イベントがFreezeだったら、メモリ保持メンテナンスの通知
+    # イベントがTerminate以外だったら、メモリ保持メンテナンスの通知
     ###############################################
     if(($Event.EventStatus -eq "Scheduled") -and ($Event.ResourceType -eq "VirtualMachine") -and ($Event.EventType -ne "Terminate")){
       $JSTTime = [DateTime]$Event.NotBefore
