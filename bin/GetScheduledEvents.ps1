@@ -39,7 +39,7 @@ if($null -ne $ScheduledEvents) {
     ###############################################
     # イベントがFreezeだったら、メモリ保持メンテナンスの通知
     ###############################################
-    if(($Event.EventStatus -eq "Scheduled") -and ($Evetnt.ResouceType -eq "VirtualMachine") -and ($Event.EventType -ne "Terminate")){
+    if(($Event.EventStatus -eq "Scheduled") -and ($Event.ResourceType -eq "VirtualMachine") -and ($Event.EventType -ne "Terminate")){
       $JSTTime = [DateTime]$Event.NotBefore
       foreach($Resouce in $Event.Resources) {
         $HostName = $Resouce
