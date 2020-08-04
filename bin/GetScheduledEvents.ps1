@@ -5,8 +5,8 @@
 ## @name:GetSheduledEvents.ps1
 ## @summary:Azure VM Sheduled Events(Azure Metadata Service)
 ##
-## @since:2020/05/21
-## @version:1.0
+## @since:2020/08/04
+## @version:1.1
 ## @see:
 ## @parameter
 ##
