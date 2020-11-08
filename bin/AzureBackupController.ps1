@@ -2,7 +2,7 @@
 ## Copyright(c) 2020 BeeX Inc. All rights reserved.
 ## @auther#Naruhiro Ikeya
 ##
-## @name:AzreBackupController.ps1
+## @name:AzureBackupController.ps1
 ## @summary:Azure Backup Recovery Point Retention Controller
 ##
 ## @since:2019/06/04
