@@ -33,11 +33,14 @@ param (
 ##########################
 # 固定値 
 ##########################
+$Stdout = $true
+$Eventlog = $true
 
 ##########################
 # 警告の表示抑止
 ##########################
 # Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
+
 
 ###############################
 # LogController オブジェクト生成
@@ -76,7 +79,7 @@ try {
   $Service = New-Object ServiceController($ServiceName)
   if($Service.Initialize($Log)) {    
     if($Service.GetStatus() -ne "Running") {
-      $Log.Error($Service + "サービスが起動していません。")
+      $Log.Error($ServiceName + "サービスが起動していません。")
     }
   }
 #################################################

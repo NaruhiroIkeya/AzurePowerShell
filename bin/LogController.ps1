@@ -49,7 +49,7 @@ Class LogController {
     # EventLog書き込み用ソース情報登録
     #####################################
     if($EventLog -and (-not $EventSource)) { $this.EventSource=$(Get-ChildItem $MyInvocation.MyCommand.Path).Name } 
-    if($EventLog -and (-not $EventSource)) {
+    if($EventLog -and $EventSource) {
       if ([System.Diagnostics.EventLog]::SourceExists($EventSource) -eq $false) {
           [System.Diagnostics.EventLog]::CreateEventSource($EventSource, "Application")
       }

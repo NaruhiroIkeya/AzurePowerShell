@@ -43,6 +43,8 @@ Class ServiceController {
   }
 
   [bool] Initialize([object] $Log) {
+    [object]$getServiceError = $null
+
     try {
       $this.Log = $Log
       ##########################
@@ -51,7 +53,7 @@ Class ServiceController {
       if (Test-Connection $this.HostName -quiet) {
         $this.SVCStatus = Get-Service $this.ServiceName -ComputerName $this.HostName -ErrorVariable getServiceError -ErrorAction SilentlyContinue
         if ($getServiceError -and ($getServiceError | ForEach-Object {$_.FullyQualifiedErrorId -like "*NoServiceFoundForGivenName*"})) {
-          $this.Log.Error("指定されたサービスがありません。")
+          $this.Log.Error("指定されたサービス$($this.ServiceName)がありません。")
           return $false
         }
       } else {
@@ -67,6 +69,8 @@ Class ServiceController {
   }
 
   [bool]Start() {
+    [object]$getServiceError = $null
+
     if (-not $this.Log) { if (-not $this.Initialize()) {return $false} }
     do {
       if ($this.GetStaus() -eq "Stopped") {
@@ -88,6 +92,8 @@ Class ServiceController {
   }
 
   [bool]Stop() {
+    [object]$getServiceError = $null
+
     if (-not $this.Log) { if (-not $this.Initialize()) {return $false} }
     do {
       if ($this.GetStatus() -eq "Running") {
@@ -109,6 +115,8 @@ Class ServiceController {
   }
 
   [string]GetStatus() {
+    [object]$getServiceError = $null
+
     $this.SVCStatus = Get-Service $this.ServiceName -ComputerName $this.HostName -ErrorVariable getServiceError -ErrorAction SilentlyContinue
     if ($getServiceError -and ($getServiceError | ForEach-Object {$_.FullyQualifiedErrorId -like "*NoServiceFoundForGivenName*"})) {
       $this.Log.Error("指定されたサービス$($this.ServiceName)がありません。")
