@@ -9,9 +9,8 @@
 ## @version:1.0
 ## @see:
 ##
-## @param:server: Server Name
-## @param:service: Service Name
-## @param:mode:start/stop
+## @param:HostName: Host Name
+## @param:SeriveName: Service Name
 ## @return:0:Success 1:Error
 #################################################################################>
 
