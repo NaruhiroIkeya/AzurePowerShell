@@ -46,15 +46,16 @@ Class AzureLogonFunction {
       ##########################
       if (($this.ConfigPath) -and (-not $(Test-Path $this.ConfigPath))) {
         $this.log.error("認証情報ファイルが存在しません。")
-        return $false
+      } else {
+        $this.log.info("認証情報ファイルパス：" + (Split-Path $this.ConfigPath -Parent))
+        $this.log.info("認証情報ファイル名：" + (Get-ChildItem $this.ConfigPath).Name)
+        if ($(Test-Path $this.ConfigPath)) { $this.ConfigInfo = [xml](Get-Content $this.ConfigPath) }
+        if(-not $this.ConfigInfo) { 
+          $this.log.error("既定のファイルから認証情報が読み込めませんでした。")
+          return $false
+        } 
       }
-      $this.log.info("認証情報ファイルパス：" + (Split-Path $this.ConfigPath -Parent))
-      $this.log.info("認証情報ファイル名：" + (Get-ChildItem $this.ConfigPath).Name)
-      if ($(Test-Path $this.ConfigPath)) { $this.ConfigInfo = [xml](Get-Content $this.ConfigPath) }
-      if(-not $this.ConfigInfo) { 
-        $this.log.error("既定のファイルから認証情報が読み込めませんでした。")
-        return $false
-      } else { return $true }
+      return $true
     } catch {
       $this.Log.Error("処理中にエラーが発生しました。")
       $this.Log.Error($("" + $Error[0] | Format-List --DisplayError))
@@ -65,6 +66,7 @@ Class AzureLogonFunction {
   [bool] Logon() {
     try {
       $LoginInfo = $null
+      $Subscription = $null
       if (-not $this.Log) { if (-not $this.Initialize()) {return $false} }
       if (-not $(Test-Path $this.ConfigPath)) {
         ##########################
@@ -92,6 +94,7 @@ Class AzureLogonFunction {
           $MyCreds = New-Object System.Management.Automation.PSCredential ($this.ConfigInfo.Configuration.ApplicationID, $SecPasswd)
           $LoginInfo = Login-AzAccount -ServicePrincipal -Tenant $this.ConfigInfo.Configuration.TennantID -Credential $MyCreds -WarningAction Ignore
         }
+        $Subscription = Get-AzSubscription -SubscriptionId $this.ConfigInfo.Configuration.SubscriptionID | Select-AzSubscription
       }
       if(-not $LoginInfo) { 
         $this.Log.error("Azureへログイン:失敗")
@@ -100,7 +103,7 @@ Class AzureLogonFunction {
       Enable-AzContextAutosave
       $this.Log.info("Azureへログイン:成功")
       $this.Log.info("Account:" + $LoginInfo.Context.Account.Id)
-      $this.Log.info("Subscription:" + $LoginInfo.Context.Subscription.Name)
+      $this.Log.info("Subscription:" + $Subscription.Name)
       $this.Log.info("TennantId:" + $LoginInfo.Context.Tenant.Id)
       return $true
     } catch {
