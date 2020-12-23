@@ -94,7 +94,12 @@ Class AzureLogonFunction {
           $MyCreds = New-Object System.Management.Automation.PSCredential ($this.ConfigInfo.Configuration.ApplicationID, $SecPasswd)
           $LoginInfo = Login-AzAccount -ServicePrincipal -Tenant $this.ConfigInfo.Configuration.TennantID -Credential $MyCreds -WarningAction Ignore
         }
-        $Subscription = Get-AzSubscription -SubscriptionId $this.ConfigInfo.Configuration.SubscriptionID | Select-AzSubscription
+        if($this.ConfigInfo.Configuration.SubscriptionID) {
+          $Subscription = Get-AzSubscription -SubscriptionId $this.ConfigInfo.Configuration.SubscriptionID | Select-AzSubscription
+          if(-not $Subscription) {
+            $this.Log.info("SubscriptionIDÇ™ë∂ç›ÇµÇ‹ÇπÇÒÅB:" + $this.ConfigInfo.Configuration.SubscriptionID)
+          }
+        }
       }
       if(-not $LoginInfo) { 
         $this.Log.error("AzureÇ÷ÉçÉOÉCÉì:é∏îs")
