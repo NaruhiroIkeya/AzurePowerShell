@@ -28,7 +28,7 @@ param (
   [switch]$DataDiskOnly=$false,
   [switch]$RebuildVM=$false,
   [switch]$Eventlog=$false,
-  [switch]$Stdout
+  [switch]$Stdout=$false
 )
 
 ##########################
@@ -71,7 +71,6 @@ if($Stdout -and $Eventlog) {
 ##########################
 # パラメータチェック
 ##########################
-
 try {
   ##########################
   # Azureログオン処理
