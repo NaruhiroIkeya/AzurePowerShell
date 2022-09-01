@@ -169,7 +169,7 @@ try {
       } elseif($DisableAzureBackup -and (($DisableTime -le $UTCNow) -and ($UTCNow -lt $BackupTime))) {
         $Log.Info($AzureVMProtectionPolicy.Name + "の無効化処理を開始します。")
       } else {
-        if($EnableAzureBackup) { $Log.Info($AzureVMProtectionPolicy.Name + "の有効化可能時間帯は ～" + $DisableTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm") + "までです。" + $BackupTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm") + "以降に再有効化可能です。") }
+        if($EnableAzureBackup) { $Log.Info($AzureVMProtectionPolicy.Name + "の有効化可能時間帯は ～" + $DisableTime.ToLocalTime().ToString( "yyyy/MM/dd HH:mm" ) + "までです。" + $BackupTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm") + "以降に再有効化可能です。") }
         if($DisableAzureBackup) { $Log.Info($AzureVMProtectionPolicy.Name + "の無効化可能時間帯は " + $DisableTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm") + "～" + $BackupTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm") + "です。") }
         continue
       }
@@ -179,7 +179,7 @@ try {
       $Log.Info("Backup Policyファイル名：" + $SettingFile)
       if(-not (Test-Path(Join-Path $SettingFilePath -ChildPath $SettingFile))) {
         $Log.Warn("Backup Policyファイルが存在しません。")
-        break
+        Continue 
       }
       $BackupPolicyConfig = [xml](Get-Content (Join-Path $SettingFilePath -ChildPath $SettingFile -Resolve))
       if(-not $BackupPolicyConfig) { 
@@ -204,12 +204,15 @@ try {
               try {
                 $Vault = Get-AzRecoveryServicesVault -Name $VaultName
                 $Container = Get-AzRecoveryServicesBackupContainer -VaultId $Vault.ID -ContainerType "AzureVM" -Status "Registered" -FriendlyName $VMName
+                Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $Container.FriendlyName + "のAzure Backupを有効化します。")
                 $Item = Get-AzRecoveryServicesBackupItem -VaultId $Vault.ID -Container $Container -WorkloadType AzureVM 
+                Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + "現在のステータス：" + $Item.ProtectionState)
                 $AzureVMProtectionPolicy = Get-AzRecoveryServicesBackupProtectionPolicy -VaultId $Vault.ID -Name $PolicyName
+                Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + "適用するポリシー：" + $AzureVMProtectionPolicy.Name)
                 $EnabledItem = Enable-AzRecoveryServicesBackupProtection -VaultId $Vault.ID -Item $Item -Policy $AzureVMProtectionPolicy
-                Write-Host("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $EnabledItem.WorkloadName + "のAzure Backupを有効化しました。")
+                Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $EnabledItem.WorkloadName + "のAzure Backupを有効化しました。")
               } catch {
-                Write-Host("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $VMName + "のAzure Backu有効化に失敗しました。")
+                Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $VMName + "のAzure Backu有効化に失敗しました。")
                 throw
               } 
             }
@@ -225,35 +228,43 @@ try {
               try {
                 $Vault = Get-AzRecoveryServicesVault -Name $VaultName
                 $Container = Get-AzRecoveryServicesBackupContainer -VaultId $Vault.ID -ContainerType "AzureVM" -Status "Registered" -FriendlyName $VMName
-                $Item = Get-AzRecoveryServicesBackupItem -VaultId $Vault.ID -Container $Container -WorkloadType AzureVM
+                Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $Container.FriendlyName + "のAzure Backupを無効化します。")
+                $Item = Get-AzRecoveryServicesBackupItem -VaultId $Vault.ID -Container $Container -WorkloadType AzureVM 
+                Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + "現在のステータス：" + $Item.ProtectionState)
+                Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + "除外するポリシー：" + $Item.ProtectionPolicyName)
                 $DisabledItem = Disable-AzRecoveryServicesBackupProtection -VaultId $Vault.ID -Item $Item -Force
-                Write-Host("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $DisabledItem.WorkloadName + "のAzure Backupを無効化しました。")
+                Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $DisabledItem.WorkloadName + "のAzure Backupを無効化しました。")
               } catch {
-                Write-Host("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $VMName + "のAzure Backup無効化に失敗しました。")
+                Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $VMName + "のAzure Backup無効化に失敗しました。")
                 throw
               } 
             }
-            $JobResult = Start-Job $BackgroundJob -ArgumentList $Vault.Name, $Container.FriendlyName, $AzureVMProtectionPolicy.Name
+            $JobResult = Start-Job $BackgroundJob -ArgumentList $Vault.Name, $Container.FriendlyName
             $Log.Info($Container.FriendlyName + "のAzure Backup" + $StatusString + "ジョブを実行しました。JobID = " + $JobResult.Id)
             $Log.Info($BackupTime.ToLocalTime().ToString("yyyy/MM/dd HH:mm") + " のバックアップジョブをスキップします。")
             break
           }
         }
       }
+
+      ######################################
+      # バックグラウンドジョブの完了待ち
+      ######################################
+      $Log.Info("バックグラウンドジョブ完了待ち")
+      $JobResults=Get-Job | Wait-Job -Timeout 600
+      foreach($JobResult in $JobResults) { 
+        $Log.Info("Id:$($JobResult.Id) State:$($JobResult.JobStateInfo.State)")
+        $Message = Receive-Job -job $JobResult -Keep
+        $Log.Info($Message)
+      }
+
+      ######################################
+      # バックグラウンドジョブの削除
+      ######################################
+      Get-Job | Remove-Job
+      $Log.Info("Azure Backup" + $StatusString + "処理:完了")
+      $Log.Info("Debug:Finish 3!!!! " + $AzureVMProtectionPolicy.Name)
     }
-    ######################################
-    # バックグラウンドジョブの完了待ち
-    ######################################
-    $Log.Info("バックグラウンドジョブ完了待ち")
-    $JobResults=Get-Job | Wait-Job -Timeout 600
-    foreach($JobResult in $JobResults) { 
-      $Log.Info("Id:$($JobResult.Id) State:$($JobResult.JobStateInfo.State)")
-    } 
-    ######################################
-    # バックグラウンドジョブの削除
-    ######################################
-    Get-Job | Remove-Job
-    $Log.Info("Azure Backup" + $StatusString + "処理:完了")
   }
 #################################################
 # エラーハンドリング
