@@ -44,6 +44,7 @@ param (
 ##########################
 # 固定値 
 ##########################
+[string]$CredenticialFile = "AzureCredential_Secure.xml"
 New-Variable -Name ReturnState -Value @("Take Snapshot","Transfer data to vault") -Option ReadOnly
 # $ErrorActionPreference="Stop"
 
@@ -144,14 +145,14 @@ try {
     $JobResult = Wait-AzRecoveryServicesBackupJob -VaultId $RecoveryServiceVault.ID -Job $Job -Timeout $JobTimeout
   }
   if($JobResult.Status -eq "InProgress") {
-    $SubTasks = $(Get-AzRecoveryServicesBackupJobDetails -VaultId $RecoveryServiceVault.ID -JobId $JobResult.JobId).SubTasks
+    $SubTasks = $(Get-AzRecoveryServicesBackupJobDetail -VaultId $RecoveryServiceVault.ID -JobId $JobResult.JobId).SubTasks
     $Log.Info("Azure Backupジョブ監視を中断します。Job ID=" +  $JobResult.JobId)
     Foreach($SubTask in $SubTasks) {
       $Log.Info($SubTask.Name + " " +  $SubTask.Status)
     }
     exit 2
   } elseif($JobResult.Status -eq "Cancelled") {
-    $SubTasks = $(Get-AzRecoveryServicesBackupJobDetails -VaultId $RecoveryServiceVault.ID -JobId $JobResult.JobId).SubTasks
+    $SubTasks = $(Get-AzRecoveryServicesBackupJobDetail -VaultId $RecoveryServiceVault.ID -JobId $JobResult.JobId).SubTasks
     $Log.Warn("Azure Backupジョブがキャンセルされました。Job ID=" +  $JobResult.JobId)
     Foreach($SubTask in $SubTasks) {
       $Log.Warn($SubTask.Name + " " +  $SubTask.Status)
