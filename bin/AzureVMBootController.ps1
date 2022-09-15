@@ -94,7 +94,7 @@ try {
   # ResourceGroup名のチェック
   ############################
   $ResourceGroup = Get-AzResourceGroup | Where-Object{$_.ResourceGroupName -eq $ResourceGroupName}
-  if(-not $ResourceGroup) { 
+  if(-not $ResourceGroup) {
     $Log.Error("ResourceGroup名が不正です。" + $ResourceGroupName)
     exit 9
   }

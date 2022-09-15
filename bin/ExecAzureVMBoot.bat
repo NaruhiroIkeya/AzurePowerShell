@@ -23,6 +23,7 @@ SETLOCAL ENABLEDELAYEDEXPANSION
 SET __LOG_CYCLE__=7
 SET __APL_PS1__=AzureVMBootController.ps1
 SET __EXPIRE_DAYS__=7
+SET __ERROR_CODE__=-1
 
 :::::::::::::::::::::::::::::::::::
 ::      パラメータチェック       ::
@@ -81,7 +82,6 @@ if "%PROCESSOR_ARCHITECTURE%" EQU "AMD64" (
 )
 
 %EXEC_POWERSHELL% -NoProfile -inputformat none -command "%__PS_SCRIPT__% -Boot -Stdout -ResourceGroupName %__RESOURCEGROUPNAME__% -AzureVMName %__VMNAME__%;exit $LASTEXITCODE" >>"%__LOGFILE__%"
-
 ::::::::::::::::::::::::::::::::::::::::::
 ::      スクリプト本体実行結果確認      ::
 ::::::::::::::::::::::::::::::::::::::::::

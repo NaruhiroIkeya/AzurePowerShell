@@ -23,6 +23,7 @@ SETLOCAL ENABLEDELAYEDEXPANSION
 SET __LOG_CYCLE__=7
 SET __APL_PS1__=AzureVMBootController.ps1
 SET __EXPIRE_DAYS__=7
+SET __ERROR_CODE__=-1
 
 :::::::::::::::::::::::::::::::::::
 ::      パラメータチェック       ::
