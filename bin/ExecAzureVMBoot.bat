@@ -54,7 +54,7 @@ SET __NOW__=%__TODAY__%%__TIME__: =0%
 ::::::::::::::::::::::::::::::::::::
 FOR /F "usebackq" %%L IN (`powershell -command "Split-Path %~dp0 -Parent | Join-Path -ChildPath log"`) DO SET __LOGPATH__=%%L
 IF NOT EXIST %__LOGPATH__% MKDIR %__LOGPATH__% 
-SET __LOGFILE__=%__LOGPATH__%\%~n0_%__NOW__%.log
+SET __LOGFILE__=%__LOGPATH__%\%~n0_%__VMNAME__%_%__NOW__%.log
 
 ::::::::::::::::::::::::::::::::::::::::::::::
 ::      出力ログファイルローテーション      ::
