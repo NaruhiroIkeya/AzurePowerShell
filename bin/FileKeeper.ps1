@@ -31,9 +31,7 @@ param (
 ##########################
 # 固定値 
 ##########################
-[int]$LocalSaveTerm = 1
-[int]$RemoteSaveTerm = 7
-[booblean]$ErrorFlg = $false
+[bool]$ErrorFlg = $false
 
 ##########################
 # 警告の表示抑止
@@ -44,23 +42,23 @@ param (
 # 関数定義
 ##########################
 # 外部コマンド実行
-Function Execute-Command($commandTitle, $commandPath, $commandArguments) {
+Function Invoke-Command($commandTitle, $commandPath, $commandArguments) {
   Try {
-    $pinfo = New-Object System.Diagnostics.ProcessStartInfo
-    $pinfo.FileName = $commandPath
-    $pinfo.RedirectStandardError = $true
-    $pinfo.RedirectStandardOutput = $true
-    $pinfo.UseShellExecute = $false
-    $pinfo.Arguments = $commandArguments
-    $p = New-Object System.Diagnostics.Process
-    $p.StartInfo = $pinfo
-    $p.Start() | Out-Null
-    $p.WaitForExit()
+    $PSInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $PSInfo.FileName = $commandPath
+    $PSInfo.RedirectStandardError = $true
+    $PSInfo.RedirectStandardOutput = $true
+    $PSInfo.UseShellExecute = $false
+    $PSInfo.Arguments = $commandArguments
+    $Proc = New-Object System.Diagnostics.Process
+    $Proc.StartInfo = $PSInfo
+    $Proc.Start() | Out-Null
+    $Proc.WaitForExit()
     [pscustomobject]@{
         CommandTitle = $commandTitle
-        StdOut = $p.StandardOutput.ReadToEnd()
-        StdErr = $p.StandardError.ReadToEnd()
-        ExitCode = $p.ExitCode
+        StdOut = $Proc.StandardOutput.ReadToEnd()
+        StdErr = $Proc.StandardError.ReadToEnd()
+        ExitCode = $Proc.ExitCode
     }
   }
   Catch {
@@ -75,7 +73,7 @@ Function Execute-Command($commandTitle, $commandPath, $commandArguments) {
 Function Get-FileList($FilePath, $Files) {
 
   $FullPath = "$FilePath\$Files"
-  $ReturnObj = Execute-Command "dir" $env:comspec "/C DIR /B `"$FullPath`""
+  $ReturnObj = Invoke-Command "dir" $env:comspec "/C DIR /B `"$FullPath`""
   if (-not $ReturnObj.ExitCode) {
     $Log.Info("$($FullPath)`r`n$($ReturnObj.StdOut)")
   } else {
@@ -160,7 +158,7 @@ try {
 
             $Log.Info("コピー元ファイル:$SourcePath")
             $Log.Info("コピー先フォルダ:$TargetPath")
-            $ReturnObj = Execute-Command "robocopy" $env:comspec "/C ROBOCOPY `"$SourcePath`" $TargetPath *.$($Target.FileExt) /DCOPY:DAT /NP /MT:8"
+            $ReturnObj = Invoke-Command "robocopy" $env:comspec "/C ROBOCOPY `"$SourcePath`" $TargetPath *.$($Target.FileExt) /DCOPY:DAT /NP /MT:8"
             switch($ReturnObj.ExitCode) {
               # コピーしたファイルがない
               0 {
@@ -176,7 +174,7 @@ try {
                 # リモートファイル削除
                 ##########################
                 $Log.Info("リモートファイルローテーション開始:$($Target.RemoteTerm)日以前のファイルを削除します。")
-                $ReturnObj = Execute-Command "forfiles" $env:comspec "/C FORFILES /P $TargetPath /M *.$($Target.FileExt) /D -$($Target.RemoteTerm) /C `"CMD /C IF @isdir==FALSE DEL /Q @path`""
+                $ReturnObj = Invoke-Command "forfiles" $env:comspec "/C FORFILES /P $TargetPath /M *.$($Target.FileExt) /D -$($Target.RemoteTerm) /C `"CMD /C IF @isdir==FALSE DEL /Q @path`""
                 if (-not $ReturnObj.ExitCode) {
                   $Log.Info("リモートファイル削除`r`n$($ReturnObj.StdOut)")
                 } else {
@@ -187,7 +185,7 @@ try {
                 # ローカルファイル削除
                 ##########################
                 $Log.Info("ローカルファイルローテーション開始:$($Target.LocalTerm)日以前のファイルを削除します。")
-                $ReturnObj = Execute-Command "forfiles" $env:comspec "/C FORFILES /P $SourcePath /M *.$($Target.FileExt) /D -$($Target.LocalTerm) /C `"CMD /C IF @isdir==FALSE DEL /Q @path`""
+                $ReturnObj = Invoke-Command "forfiles" $env:comspec "/C FORFILES /P $SourcePath /M *.$($Target.FileExt) /D -$($Target.LocalTerm) /C `"CMD /C IF @isdir==FALSE DEL /Q @path`""
                 if (-not $ReturnObj.ExitCode) {
                   $Log.Info("ローカルファイル削除`r`n$($ReturnObj.StdOut)")
                 } else {
