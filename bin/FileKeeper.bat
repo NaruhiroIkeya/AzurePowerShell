@@ -1,3 +1,4 @@
+::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 :: Copyright(c) 2023 BeeX Inc. All rights reserved.
 :: @auther:Naruhiro Ikeya
 ::
@@ -8,7 +9,7 @@
 :: @version:1.0
 :: @see:
 :: @parameter
-::  1:Configuration Fileå
+::  1:Configuration File–¼
 ::
 :: @return:0:Success -1:Error
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -16,14 +17,14 @@
 SETLOCAL ENABLEDELAYEDEXPANSION
 
 :::::::::::::::::::::::::::::
-::      ç’°å¢ƒå¤‰æ•°è¨­å®š       ::
+::      ŠÂ‹«•Ï”Ý’è       ::
 :::::::::::::::::::::::::::::
 SET __LOG_CYCLE__=7
 SET __APL_PS1__=%~n0.ps1
 SET __ERROR_CODE__=-1
 
 :::::::::::::::::::::::::::::::::::
-::      ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ãƒã‚§ãƒƒã‚¯       ::
+::      ƒpƒ‰ƒ[ƒ^ƒ`ƒFƒbƒN       ::
 :::::::::::::::::::::::::::::::::::
 SET __ARGC__=0
 FOR %%a IN ( %* ) DO SET /A __ARGC__+=1
@@ -31,14 +32,14 @@ FOR %%a IN ( %* ) DO SET /A __ARGC__+=1
 IF %__ARGC__% neq 1 (
   SET __TIME__=%TIME:~0,8%
   SET __TIME__=!__TIME__: =0!
-  ECHO [%DATE% !__TIME__!] Usage:%~n0 ConfigurationFileå
+  ECHO [%DATE% !__TIME__!] Usage:%~n0 ConfigurationFile–¼
   EXIT /B %__ERROR_CODE__%
 ) 
 
 SET __CNFFILENAME__=%1
 
 ::::::::::::::::::::::::::::::::::
-::      ã‚¿ã‚¤ãƒ ã‚¹ã‚¿ãƒ³ãƒ—ç”Ÿæˆ      ::
+::      ƒ^ƒCƒ€ƒXƒ^ƒ“ƒv¶¬      ::
 ::::::::::::::::::::::::::::::::::
 SET __TODAY__=%DATE:/=%
 SET __TIME__=%TIME::=%
@@ -46,42 +47,42 @@ SET __TIME__=%__TIME__:.=%
 SET __NOW__=%__TODAY__%%__TIME__: =0%
 
 ::::::::::::::::::::::::::::::::::::
-::      å‡ºåŠ›ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«ç”Ÿæˆ      ::
+::      o—ÍƒƒOƒtƒ@ƒCƒ‹¶¬      ::
 ::::::::::::::::::::::::::::::::::::
 FOR /F "usebackq" %%L IN (`powershell -command "Split-Path %~dp0 -Parent | Join-Path -ChildPath log"`) DO SET __LOGPATH__=%%L
 IF NOT EXIST %__LOGPATH__% MKDIR %__LOGPATH__% 
 SET __LOGFILE__=%__LOGPATH__%\%~n0_%~n1_%__NOW__%.log
 
 ::::::::::::::::::::::::::::::::::::::::::::::
-::      å‡ºåŠ›ãƒ­ã‚°ãƒ•ã‚¡ã‚¤ãƒ«ãƒ­ãƒ¼ãƒ†ãƒ¼ã‚·ãƒ§ãƒ³      ::
+::      o—ÍƒƒOƒtƒ@ƒCƒ‹ƒ[ƒe[ƒVƒ‡ƒ“      ::
 ::::::::::::::::::::::::::::::::::::::::::::::
 FORFILES /P %__LOGPATH__% /M *.log /D -%__LOG_CYCLE__% /C "CMD /C IF @isdir==FALSE DEL /Q @path" > NUL 2>&1
 
 ::::::::::::::::::::::::::::::::::::::
-::      ã‚¹ã‚¯ãƒªãƒ—ãƒˆæœ¬ä½“å­˜åœ¨ç¢ºèª      ::
+::      ƒXƒNƒŠƒvƒg–{‘Ì‘¶ÝŠm”F      ::
 ::::::::::::::::::::::::::::::::::::::
 SET __PS_SCRIPT__=%~dp0%__APL_PS1__%
 IF NOT EXIST %__PS_SCRIPT__% (
-  CALL :__ECHO__ ãƒ•ã‚¡ã‚¤ãƒ«åˆ¶å¾¡ã‚¹ã‚¯ãƒªãƒ—ãƒˆãŒå­˜åœ¨ã—ã¾ã›ã‚“ã€‚
+  CALL :__ECHO__ ƒtƒ@ƒCƒ‹§ŒäƒXƒNƒŠƒvƒg‚ª‘¶Ý‚µ‚Ü‚¹‚ñB
   EXIT /B %__ERROR_CODE__%
 )
 
 :::::::::::::::::::::::::::::::::::::
-::      åˆ¶å¾¡ãƒ•ã‚¡ã‚¤ãƒ«å­˜åœ¨ç¢ºèª      ::
+::      §Œäƒtƒ@ƒCƒ‹‘¶ÝŠm”F      ::
 ::::::::::::::::::::::::::::::::::::::
 FOR /F "usebackq" %%L IN (`powershell -command "Split-Path %~dp0 -Parent | Join-Path -ChildPath etc"`) DO SET __CNFPATH__=%%L
 IF NOT EXIST %__CNFPATH__% MKDIR %__CNFPATH__% 
 SET __CNFFILE__=%__CNFPATH__%\%__CNFFILENAME__%
 IF NOT EXIST %__CNFFILE__% (
-  CALL :__ECHO__ åˆ¶å¾¡ãƒ•ã‚¡ã‚¤ãƒ«ãŒå­˜åœ¨ã—ã¾ã›ã‚“ã€‚
+  CALL :__ECHO__ §Œäƒtƒ@ƒCƒ‹‚ª‘¶Ý‚µ‚Ü‚¹‚ñB
   EXIT /B %__ERROR_CODE__%
 )
 
 CD /d %~dp0
 ::::::::::::::::::::::::::::::::::
-::      ã‚¹ã‚¯ãƒªãƒ—ãƒˆæœ¬ä½“å®Ÿè¡Œ      ::
+::      ƒXƒNƒŠƒvƒg–{‘ÌŽÀs      ::
 ::::::::::::::::::::::::::::::::::
-CALL :__ECHO__ ãƒ•ã‚¡ã‚¤ãƒ«åˆ¶å¾¡å‡¦ç†ï¼ˆ%__PS_SCRIPT__%ï¼‰ã‚’é–‹å§‹ã—ã¾ã™ã€‚
+CALL :__ECHO__ ƒtƒ@ƒCƒ‹§Œäˆ—i%__PS_SCRIPT__%j‚ðŠJŽn‚µ‚Ü‚·B
 if "%PROCESSOR_ARCHITECTURE%" EQU "x86" (
     set EXEC_POWERSHELL="C:\Windows\sysnative\WindowsPowerShell\v1.0\powershell.exe"
 )
@@ -91,13 +92,13 @@ if "%PROCESSOR_ARCHITECTURE%" EQU "AMD64" (
 
 %EXEC_POWERSHELL% -NoProfile -inputformat none -command "%__PS_SCRIPT__% %__CNFFILE__% -Stdout;exit $LASTEXITCODE" >>"%__LOGFILE__%"
 ::::::::::::::::::::::::::::::::::::::::::
-::      ã‚¹ã‚¯ãƒªãƒ—ãƒˆæœ¬ä½“å®Ÿè¡Œçµæžœç¢ºèª      ::
+::      ƒXƒNƒŠƒvƒg–{‘ÌŽÀsŒ‹‰ÊŠm”F      ::
 ::::::::::::::::::::::::::::::::::::::::::
 IF ERRORLEVEL 1 (
-  CALL :__ECHO__ ãƒ•ã‚¡ã‚¤ãƒ«åˆ¶å¾¡å‡¦ç†ä¸­ã«ã‚¨ãƒ©ãƒ¼ãŒç™ºç”Ÿã—ã¾ã—ãŸã€‚
+  CALL :__ECHO__ ƒtƒ@ƒCƒ‹§Œäˆ—’†‚ÉƒGƒ‰[‚ª”­¶‚µ‚Ü‚µ‚½B
   EXIT /B %__ERROR_CODE__%
 )
-CALL :__ECHO__ ãƒ•ã‚¡ã‚¤ãƒ«åˆ¶å¾¡å‡¦ç†ãŒå®Œäº†ã—ã¾ã—ãŸã€‚
+CALL :__ECHO__ ƒtƒ@ƒCƒ‹§Œäˆ—‚ªŠ®—¹‚µ‚Ü‚µ‚½B
 
 :__QUIT__
 EXIT /B 0
