@@ -15,7 +15,7 @@
 ################################################################################>
 
 ##########################
-# パラメータ設定
+## パラメータ設定
 ##########################
 param (
   [parameter(mandatory=$true)][string]$ConfigFile,
@@ -24,24 +24,24 @@ param (
 )
 
 ##########################
-# モジュールのロード
+## モジュールのロード
 ##########################
 . .\LogController.ps1
 
 ##########################
-# 固定値 
+## 固定値 
 ##########################
 [bool]$ErrorFlg = $false
 
 ##########################
-# 警告の表示抑止
+## 警告の表示抑止
 ##########################
-# Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
+## Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true"
 
 ##########################
-# 関数定義
+## 関数定義
 ##########################
-# 外部コマンド実行
+## 外部コマンド実行
 Function Invoke-Command($commandTitle, $commandPath, $commandArguments) {
   Try {
     $PSInfo = New-Object System.Diagnostics.ProcessStartInfo
@@ -67,18 +67,44 @@ Function Invoke-Command($commandTitle, $commandPath, $commandArguments) {
 }
 
 ##########################
-# 関数定義
+## 関数定義
 ##########################
-# ファイル一覧取得
-Function Get-FileList($FilePath, $Files) {
+## ファイル一覧取得
+Function Get-FileList($Path, $Files) {
 
-  $FullPath = "$FilePath\$Files"
+  $FullPath = "$Path\$Files"
   $ReturnObj = Invoke-Command "dir" $env:comspec "/C DIR /B `"$FullPath`""
   if (-not $ReturnObj.ExitCode) {
     $Log.Info("$($FullPath)`r`n$($ReturnObj.StdOut)")
   } else {
     $Log.Error("$($FullPath)`r`n$($ReturnObj.StdErr)")
   }
+}
+
+##########################
+# 関数定義
+##########################
+# 期限切れファイルの削除
+Function Remove-ExpiredFiles($Path, $FileExt, $Term) {
+
+  $Log.Info("ファイルローテーション開始:")
+  $Log.Info("ファイルローテーション開始:$($Term)日以前のファイルを削除します。")
+  $Log.Info("対象フォルダ:$($Path)")
+  $ReturnObj = Invoke-Command "forfiles" $env:comspec "/C FORFILES /P `"$Path`" /M *.$FileExt /D -$Term /C `"CMD /C IF @isdir==FALSE ECHO @path 2>nul`""
+  if (-not $ReturnObj.ExitCode) {
+    $Log.Info("削除対象ファイル`r`n$($ReturnObj.StdOut)")
+    $ReturnObj = Invoke-Command "forfiles" $env:comspec "/C FORFILES /P `"$Path`" /M *.$FileExt /D -$Term /C `"CMD /C IF @isdir==FALSE DEL /Q @path`""
+    if (-not $ReturnObj.ExitCode) {
+      $Log.Info("ローカルファイル削除`r`n$($ReturnObj.StdOut)")
+    } else {
+      $Log.Warn("$($ReturnObj.StdErr)")
+      return 9
+    }
+  } else {
+    $Log.Warn("$($ReturnObj.StdErr)")
+    return 9
+  }
+  return 0
 }
 
 ###############################
@@ -173,23 +199,23 @@ try {
                 ##########################
                 # リモートファイル削除
                 ##########################
-                $Log.Info("リモートファイルローテーション開始:$($Target.RemoteTerm)日以前のファイルを削除します。")
-                $ReturnObj = Invoke-Command "forfiles" $env:comspec "/C FORFILES /P $TargetPath /M *.$($Target.FileExt) /D -$($Target.RemoteTerm) /C `"CMD /C IF @isdir==FALSE DEL /Q @path`""
-                if (-not $ReturnObj.ExitCode) {
-                  $Log.Info("リモートファイル削除`r`n$($ReturnObj.StdOut)")
+                $Log.Info("ファイル削除:開始")
+                $Return = Remove-ExpiredFiles $TargetPath $Target.FileExt $Target.RemoteTerm
+                if (-not $Return) {
+                  $Log.Info("ファイル削除:完了")
                 } else {
-                  $Log.Warn("$($ReturnObj.StdErr)")
+                  $Log.Warn("ファイル削除:エラー終了")
                 }
 
                 ##########################
                 # ローカルファイル削除
                 ##########################
-                $Log.Info("ローカルファイルローテーション開始:$($Target.LocalTerm)日以前のファイルを削除します。")
-                $ReturnObj = Invoke-Command "forfiles" $env:comspec "/C FORFILES /P $SourcePath /M *.$($Target.FileExt) /D -$($Target.LocalTerm) /C `"CMD /C IF @isdir==FALSE DEL /Q @path`""
-                if (-not $ReturnObj.ExitCode) {
-                  $Log.Info("ローカルファイル削除`r`n$($ReturnObj.StdOut)")
+                $Log.Info("ファイル削除:開始")
+                $Return = Remove-ExpiredFiles $SourcePath $Target.FileExt $Target.LocalTerm
+                if (-not $Return) {
+                  $Log.Info("ファイル削除:完了")
                 } else {
-                  $Log.Warn("$($ReturnObj.StdErr)")
+                  $Log.Warn("ファイル削除:エラー終了")
                 }
                 break
               }
