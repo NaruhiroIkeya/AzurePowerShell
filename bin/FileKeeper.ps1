@@ -95,7 +95,7 @@ Function Remove-ExpiredFiles($Path, $FileExt, $Term) {
     $Log.Info("削除対象ファイル`r`n$($ReturnObj.StdOut)")
     $ReturnObj = Invoke-Command "forfiles" $env:comspec "/C FORFILES /P `"$Path`" /M *.$FileExt /D -$Term /C `"CMD /C IF @isdir==FALSE DEL /Q @path`""
     if (-not $ReturnObj.ExitCode) {
-      $Log.Info("ローカルファイル削除`r`n$($ReturnObj.StdOut)")
+      $Log.Info("ファイル削除`r`n$($ReturnObj.StdOut)")
     } else {
       $Log.Warn("$($ReturnObj.StdErr)")
       return 9
@@ -199,23 +199,21 @@ try {
                 ##########################
                 # リモートファイル削除
                 ##########################
-                $Log.Info("ファイル削除:開始")
                 $Return = Remove-ExpiredFiles $TargetPath $Target.FileExt $Target.RemoteTerm
                 if (-not $Return) {
-                  $Log.Info("ファイル削除:完了")
+                  $Log.Info("ファイルローテーション:完了")
                 } else {
-                  $Log.Warn("ファイル削除:エラー終了")
+                  $Log.Warn("ファイルローテーション:エラー終了")
                 }
 
                 ##########################
                 # ローカルファイル削除
                 ##########################
-                $Log.Info("ファイル削除:開始")
-                $Return = Remove-ExpiredFiles $SourcePath $Target.FileExt $Target.LocalTerm
+                $Return = Remove-ExpiredFiles $TargetPath $Target.FileExt $Target.RemoteTerm
                 if (-not $Return) {
-                  $Log.Info("ファイル削除:完了")
+                  $Log.Info("ファイルローテーション:完了")
                 } else {
-                  $Log.Warn("ファイル削除:エラー終了")
+                  $Log.Warn("ファイルローテーション:エラー終了")
                 }
                 break
               }
@@ -248,6 +246,7 @@ try {
             break
           }
         }
+        ## ここにいろいろ追加する
         default {
           $Log.Error("モード`($($Target.Mode)`)の指定が誤ってます。")
           break
