@@ -19,6 +19,11 @@ if(-not ($SetQos -xor $RemoveQoS)) {
 #>
 
 ##########################
+# ストレージアカウント
+##########################
+[string]$StorageAccountName = "migratee58bblsa937879.blob.core.windows.net"
+
+##########################
 # 固定値 
 ##########################
 [string]$QoSPolicyName = "AzureMigrateReplicationPolicy"
@@ -35,6 +40,7 @@ $Policy = Get-NetQosPolicy | Where-Object {$_.Name -eq $QoSPolicyName}
 if($Policy) {
   Remove-NetQosPolicy -Name $QoSPolicyName -Confirm:$false
 } else {
+  Resolve-DnsName $StorageAccountName
   New-NetQosPolicy -Name $QoSPolicyName -IPPort $IPPort -IPProtocol $IPProtocol -ThrottleRateActionBitsPerSecond $ThrottleRate
 }
 
