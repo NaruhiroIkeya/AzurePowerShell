@@ -37,7 +37,7 @@ $ScriptName = Join-Path([System.IO.FileInfo]$MyInvocation.MyCommand.Path).Direct
 $LogfileName = $ScriptName + "_" + (Get-Date -Format "yyyy-MM-dd") + ".log"
 Start-Transcript $LogfileName -Append | Out-Null
 $Settings = Get-OBMachineSetting
-if($Settings) {
+if($null -ne $Settings.ThrottlingSetting) {
   Set-OBMachineSetting -NoThrottle
 } else {
   Resolve-DnsName $StorageAccountName
