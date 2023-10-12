@@ -1,34 +1,87 @@
-<#::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-:: Copyright(c) 2015 NTT DATA Global Solutions CORPORATION. All rights reserved.
-:: @auther:Naruhiro Ikeya
-::
-:: @name:StartInstance.ps1
-:: @summary:SAPシステム起動
-::
-:: @since:2015/06/05
-:: @version:1.0
-:: @see:
-::
-:: @return:0:Success 1:Error
-::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::#>
-$scriptPath = [System.IO.Path]::GetDirectoryName($myInvocation.MyCommand.Definition)
-$SAPConfig = [xml](Get-Content "$scriptPath\SAPInstanceConfig.xml")
-. "$scriptPath\ServiceControl.ps1"
+## Copyright(c) 2020 BeeX Inc. All rights reserved.
+## @auther#Naruhiro Ikeya
+##
+## @name:StartInstance.ps1
+## @summary:SAPシステム起動
+##
+## @since:2023/08/01
+## @version:1.1
+## @see:
+## @parameter
+##  1:Azure Login認証ファイルパス
+##
+## @return:0:Success 1:Error
+#################################################################################>
 
-$Hostname = $SAPConfig.Configuration.Services.Host.Name
-foreach($Service in $SAPConfig.Configuration.Services.Host.service) {
-    $nowfmt = Get-Date -Format "yyyy/MM/dd HH:mm:ss.ff"
-    Write-Host "[$nowfmt]" $Service.name "を起動します。`r`n"
-    $rc = (ServiceControl $Hostname $Service.name "START")
-    if ($rc -ne 0) {
-        $nowfmt = Get-Date -Format "yyyy/MM/dd HH:mm:ss.ff"
-        Write-Host "[$nowfmt]" $Hostname $Service.name "が起動できませんでした。`r`n"
-        exit 1
+##########################
+## パラメータ設定
+##########################
+param (
+  [parameter(mandatory=$true)][string]$ConfigFile,
+  [switch]$Eventlog=$false,
+  [switch]$Stdout=$false
+)
+
+##########################
+## モジュールのロード
+##########################
+. .\LogController.ps1
+. .\ServiceController.ps1
+
+###############################
+# LogController オブジェクト生成
+###############################
+if($Stdout -and $Eventlog) {
+    $Log = New-Object LogController($true, (Get-ChildItem $MyInvocation.MyCommand.Path).Name)
+  } elseif($Stdout) {
+    $Log = New-Object LogController
+  } else {
+    $LogFilePath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath log -Resolve
+    if($MyInvocation.ScriptName -eq "") {
+      $LogBaseName = (Get-ChildItem $MyInvocation.MyCommand.Path).BaseName
+    } else {
+      $LogBaseName = (Get-ChildItem $MyInvocation.ScriptName).BaseName
     }
-    Start-Sleep $Service.delay
-}
-$nowfmt = Get-Date -Format "yyyy/MM/dd HH:mm:ss.ff"
-Write-Host "[$nowfmt] すべてのサービスが起動しました。`r`n"
+    $LogFileName = $LogBaseName + ".log"
+    $Log = New-Object LogController($($LogFilePath + "\" + $LogFileName), $false, $true, $LogBaseName, $false)
+    $Log.DeleteLog($SaveDays)
+    $Log.Info("ログファイル名:$($Log.GetLogInfo())")
+  }
+  
+  ##########################
+  # パラメータチェック
+  ##########################
+  
+  try {
+    ##########################
+    # 制御取得
+    ##########################
+    if (($ConfigFile) -and (-not $(Test-Path $ConfigFile))) {
+      $Log.Error("制御ファイルが存在しません。")
+      exit 9 
+    } else {
+      $Log.Info("制御ファイルパス：" + (Split-Path $ConfigFile -Parent))
+      $Log.Info("制御ファイル名：" + (Get-ChildItem $ConfigFile).Name)
+      if ($(Test-Path $ConfigFile)) { $ConfigInfo = [xml](Get-Content $ConfigFile) }
+      if(-not $ConfigInfo) { 
+        $Log.Error("既定のファイルから制御情報が読み込めませんでした。")
+        exit 9 
+      } 
+    }
+
+    if ($ConfigInfo) {
+      $Hostname = $ConfigInfo.Configuration.Services.Host.Name
+      foreach($Service in $ConfigInfo.Configuration.Services.Host.service) {
+        $Log.Info("$Hostname $($Service.name) Start. `r`n")
+        $rc = (ServiceControl $Hostname $Service.name "START")
+        if ($rc -ne 0) {
+          $Log.Info("$Hostname $($Service.name) Start Error. `r`n")
+          Exit 1
+        }
+        Start-Sleep $Service.delay
+      }
+    }
+    $Log.Info("すべてのサービスが起動しました。`r`n")
 
 $nowfmt = Get-Date -Format "yyyy/MM/dd HH:mm:ss.ff"
 Write-Host "[$nowfmt] SAP インスタンスを起動します。`r`n"
