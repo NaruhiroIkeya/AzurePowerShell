@@ -212,7 +212,7 @@ try {
                 $EnabledItem = Enable-AzRecoveryServicesBackupProtection -VaultId $Vault.ID -Item $Item -Policy $AzureVMProtectionPolicy
                 Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $EnabledItem.WorkloadName + "のAzure Backupを有効化しました。")
               } catch {
-                Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $VMName + "のAzure Backu有効化に失敗しました。")
+                Write-Output("`[$(Get-Date -UFormat "%Y/%m/%d %H:%M:%S")`] " + $VMName + "のAzure Backup有効化に失敗しました。")
                 throw
               } 
             }

@@ -3,7 +3,7 @@
 ## @auther#Naruhiro Ikeya
 ##
 ## @name:FileKeeper.ps1
-## @summary:File Management 
+## @summary:External Storage File Management 
 ##
 ## @since:2023/10/10
 ## @version:1.1
@@ -34,6 +34,7 @@ param (
 ## 固定値 
 ##########################
 [bool]$ErrorFlg = $false
+$ErrorActionPreference = "Stop"
 
 ##########################
 ## 警告の表示抑止
@@ -134,32 +135,104 @@ if($Stdout -and $Eventlog) {
 ##########################
 
 try {
-    ##########################
-    # 制御取得
-    ##########################
-    if (($ConfigFile) -and (-not $(Test-Path $ConfigFile))) {
-      $Log.Error("制御ファイルが存在しません。")
+  ##########################
+  # 制御取得
+  ##########################
+  if (($ConfigFile) -and (-not $(Test-Path $ConfigFile))) {
+    $Log.Error("制御ファイルが存在しません。")
+    exit 9 
+  } else {
+    $Log.Info("制御ファイルパス：" + (Split-Path $ConfigFile -Parent))
+    $Log.Info("制御ファイル名：" + (Get-ChildItem $ConfigFile).Name)
+    if ($(Test-Path $ConfigFile)) { $ConfigInfo = [xml](Get-Content $ConfigFile) }
+    if(-not $ConfigInfo) { 
+      $Log.Error("既定のファイルから制御情報が読み込めませんでした。")
       exit 9 
-    } else {
-      $Log.Info("制御ファイルパス：" + (Split-Path $ConfigFile -Parent))
-      $Log.Info("制御ファイル名：" + (Get-ChildItem $ConfigFile).Name)
-      if ($(Test-Path $ConfigFile)) { $ConfigInfo = [xml](Get-Content $ConfigFile) }
-      if(-not $ConfigInfo) { 
-        $Log.Error("既定のファイルから制御情報が読み込めませんでした。")
-        exit 9 
-      } 
-    }
+     } 
+  }
     
   if ($ConfigInfo) {
     foreach ($Target in $ConfigInfo.Configuration.Target) {
       $Log.Info("$($Target.Title):開始")
+      $Log.Info("$($Target.RemoteHost)に接続します")
+      $connectTestResult = Test-NetConnection -ComputerName $Target.RemoteHost -Port 445
+      if (-not ($connectTestResult.TcpTestSucceeded)) {
+        $Log.Error("共有ディスクに接続できませんでした。")
+        $ErrorFlg = $true
+        break
+      }
+
       switch($Target.Mode) {
         "Mirror" {
           ##########################
           # 退避処理開始
           ##########################
-          $Log.Info("$($Target.RemoteHost)に接続します")
-          $connectTestResult = Test-NetConnection -ComputerName $Target.RemoteHost -Port 445
+          # 再起動時にドライブが維持されるように、パスワードを保存する
+          cmd.exe /C "cmdkey /add:`"$($Target.RemoteHost)`" /user:`"$($Target.RemoteUser)`" /pass:`"$($Target.RemotePass)`""
+
+          # 共有フォルダをドライブをマウントする
+          $Log.Info("\\$($Target.RemoteHost)\$($Target.RemotePath)を$($Target.RemoteDrive)ドライブにマウントします")
+          New-PSDrive -Name $Target.RemoteDrive -PSProvider FileSystem -Root "\\$($Target.RemoteHost)\$($Target.RemotePath)" -Persist
+
+          ##########################
+          # ローカルファイル一覧
+          ##########################
+          $SourcePath = "$($Target.LocalPath)"
+          Get-FileList $SourcePath "*.$($Target.FileExt)"
+
+          ##########################
+          # リモートファイル一覧
+          ##########################
+          $TargetPath = "$($Target.RemoteDrive):"
+          Get-FileList $TargetPath "*.$($Target.FileExt)"
+
+          ##########################
+          # ファイルコピー
+          ##########################
+          $Log.Info("コピー元ファイル:$SourcePath")
+          $Log.Info("コピー先フォルダ:$TargetPath")
+          $ReturnObj = Invoke-Command "robocopy" $env:comspec "/C ROBOCOPY `"$SourcePath`" $TargetPath /MIR /DCOPY:DAT /NP /MT:8"
+          switch($ReturnObj.ExitCode) {
+            # コピーしたファイルがない
+            0 {
+              $Log.Info("コピー対象のファイルがありませんでした。")
+              $Log.Info("ファイルコピー結果`r`n$($ReturnObj.StdOut)")
+              break
+            }
+            # コピーしたファイルがある
+            ({$_ -ge 1 -and $_ -le 8}) {
+              $Log.Info("ファイルコピー結果`r`n$($ReturnObj.StdOut)")
+              break
+            }
+            # エラーを伴うコピーしたファイルがある。
+            ({$_ -gt 8}) {
+              $Log.Info("エラーが発生しました。")
+              $Log.Info("ファイルコピー結果`r`n$($ReturnObj.StdOut)")
+              $ErrorFlg = $true
+              break
+            }
+            default {
+              $Log.Info("Other")
+            }
+          }
+          ##########################
+          # ローカルファイル一覧
+          ##########################
+          Get-FileList $SourcePath "*.$($Target.FileExt)"
+
+          ##########################
+          # リモートファイル一覧
+          ##########################
+          Get-FileList $TargetPath "*.$($Target.FileExt)"
+
+          # 共有フォルダのアンマウント
+          Get-PSDrive $Target.RemoteDrive | Remove-PSDrive
+        }
+
+        "DateDirectory" {
+          ##########################
+          # 退避処理開始
+          ##########################
           if ($connectTestResult.TcpTestSucceeded) {
             # 再起動時にドライブが維持されるように、パスワードを保存する
             cmd.exe /C "cmdkey /add:`"$($Target.RemoteHost)`" /user:`"$($Target.RemoteUser)`" /pass:`"$($Target.RemotePass)`""
@@ -184,8 +257,8 @@ try {
             # ファイルコピー
             ##########################
             $Log.Info("コピー元ファイル:$SourcePath")
-            $Log.Info("コピー先フォルダ:$TargetPath")
-            $ReturnObj = Invoke-Command "robocopy" $env:comspec "/C ROBOCOPY `"$SourcePath`" $TargetPath /MIR /DCOPY:DAT /NP /MT:8"
+            $Log.Info("コピー先フォルダ:$(Join-Path $TargetPath (Get-Date).ToString("yyyyMMdd"))")
+            $ReturnObj = Invoke-Command "robocopy" $env:comspec "/C ROBOCOPY `"$SourcePath`" $(Join-Path $TargetPath (Get-Date).ToString("yyyyMMdd")) /MIR /DCOPY:DAT /NP /MT:8"
             switch($ReturnObj.ExitCode) {
               # コピーしたファイルがない
               0 {
@@ -196,6 +269,17 @@ try {
               # コピーしたファイルがある
               ({$_ -ge 1 -and $_ -le 8}) {
                 $Log.Info("ファイルコピー結果`r`n$($ReturnObj.StdOut)")
+                ##########################
+                # リモートディレクトリ削除
+                ##########################
+                $Log.Info("ディレクトリ削除:開始")
+                $RemoveDir = $(Join-Path $TargetPath (Get-Date).AddDays(-1 * $Target.RemoteTerm).ToString("yyyyMMdd"))
+                if (Test-Path $RemoveDir) {
+                  $Return = Remove-Item -Recurse $RemoveDir -Force
+                  $Log.Info("ディレクトリ削除:$($RemoveDir)完了")
+                } else {
+                  $Log.Warn("ディレクトリ削除:$($RemoveDir)がありません")
+                }
                 break
               }
               # エラーを伴うコピーしたファイルがある。
@@ -209,7 +293,6 @@ try {
                 $Log.Info("Other")
               }
             }
-
             ##########################
             # ローカルファイル一覧
             ##########################
@@ -222,9 +305,6 @@ try {
 
             # 共有フォルダのアンマウント
             Get-PSDrive $Target.RemoteDrive | Remove-PSDrive
-          } else {
-            $Log.Error("共有ディスクに接続できませんでした。")
-            break
           }
         }
 
@@ -232,8 +312,6 @@ try {
           ##########################
           # 退避処理開始
           ##########################
-          $Log.Info("$($Target.RemoteHost)に接続します")
-          $connectTestResult = Test-NetConnection -ComputerName $Target.RemoteHost -Port 445
           if ($connectTestResult.TcpTestSucceeded) {
             # 再起動時にドライブが維持されるように、パスワードを保存する
             cmd.exe /C "cmdkey /add:`"$($Target.RemoteHost)`" /user:`"$($Target.RemoteUser)`" /pass:`"$($Target.RemotePass)`""
@@ -257,7 +335,6 @@ try {
             ##########################
             # ファイルコピー
             ##########################
-
             $Log.Info("コピー元ファイル:$SourcePath")
             $Log.Info("コピー先フォルダ:$TargetPath")
             $ReturnObj = Invoke-Command "robocopy" $env:comspec "/C ROBOCOPY `"$SourcePath`" $TargetPath *.$($Target.FileExt) /DCOPY:DAT /NP /MT:8"
@@ -306,7 +383,6 @@ try {
                 $Log.Info("Other")
               }
             }
-
             ##########################
             # ローカルファイル一覧
             ##########################
@@ -319,9 +395,6 @@ try {
 
             # 共有フォルダのアンマウント
             Get-PSDrive $Target.RemoteDrive | Remove-PSDrive
-          } else {
-            $Log.Error("共有ディスクに接続できませんでした。")
-            break
           }
         }
 
@@ -336,6 +409,7 @@ try {
 
   if($ErrorFlg) { exit 9 }
   else { exit 0 }
+
 } catch {
   $Log.Error("処理中にエラーが発生しました。")
   $Log.Error($("" + $Error[0] | Format-List --DisplayError))
