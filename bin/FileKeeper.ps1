@@ -258,7 +258,8 @@ try {
             ##########################
             $Log.Info("コピー元ファイル:$SourcePath")
             $Log.Info("コピー先フォルダ:$(Join-Path $TargetPath (Get-Date).ToString("yyyyMMdd"))")
-            $ReturnObj = Invoke-Command "robocopy" $env:comspec "/C ROBOCOPY `"$SourcePath`" $(Join-Path $TargetPath (Get-Date).ToString("yyyyMMdd")) /MIR /DCOPY:DAT /NP /MT:8"
+            $CopyLog = $(Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath log -Resolve) + "\" + (Get-ChildItem $MyInvocation.MyCommand.Path).BaseName + "_Robocopy_" + $(Get-Date -Format "yyyyMMddHHmmss") + ".log"
+            $ReturnObj = Invoke-Command "robocopy" $env:comspec "/C ROBOCOPY `"$SourcePath`" $(Join-Path $TargetPath (Get-Date).ToString("yyyyMMdd")) /MT:4 /J /R:2 /W:1 /MIR /IT /COPY:DAT /DCOPY:DAT /NP /FFT /COMPRESS /LOG:$CopyLog"
             switch($ReturnObj.ExitCode) {
               # コピーしたファイルがない
               0 {
@@ -273,13 +274,14 @@ try {
                 # リモートディレクトリ削除
                 ##########################
                 $Log.Info("ディレクトリ削除:開始")
-                $RemoveDir = $(Join-Path $TargetPath (Get-Date).AddDays(-1 * $Target.RemoteTerm).ToString("yyyyMMdd"))
-                if (Test-Path $RemoveDir) {
-                  $Return = Remove-Item -Recurse $RemoveDir -Force
-                  $Log.Info("ディレクトリ削除:$($RemoveDir)完了")
-                } else {
-                  $Log.Warn("ディレクトリ削除:$($RemoveDir)がありません")
-                }
+                Get-ChildItem $TargetPath -Recurse | Where-Object {($_.Mode -eq "d-----") -and ($_.Name -lt (Get-Date).AddDays(-1 * $ConfigInfo.Configuration.LocalTerm).ToString("yyyyMMdd"))} | Remove-Item -Recurse -Force
+#                $RemoveDir = $(Join-Path $TargetPath (Get-Date).AddDays(-1 * $Target.RemoteTerm).ToString("yyyyMMdd"))
+#                if (Test-Path $RemoveDir) {
+#                  $Return = Remove-Item -Recurse $RemoveDir -Force
+#                  $Log.Info("ディレクトリ削除:$($RemoveDir)完了")
+#                } else {
+#                  $Log.Warn("ディレクトリ削除:$($RemoveDir)がありません")
+#                }
                 break
               }
               # エラーを伴うコピーしたファイルがある。
