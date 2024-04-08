@@ -92,7 +92,7 @@ Class AzureLogonFunction {
           $Password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
           $SecPasswd = ConvertTo-SecureString $Password -AsPlainText -Force
           $MyCreds = New-Object System.Management.Automation.PSCredential ($this.ConfigInfo.Configuration.ApplicationID, $SecPasswd)
-          $LoginInfo = Login-AzAccount -ServicePrincipal -Tenant $this.ConfigInfo.Configuration.TennantID -Credential $MyCreds -WarningAction Ignore
+          $LoginInfo = Connect-AzAccount -ServicePrincipal -Tenant $this.ConfigInfo.Configuration.TennantID -Credential $MyCreds -WarningAction Ignore
         }
         if($this.ConfigInfo.Configuration.SubscriptionID) {
           $Subscription = Get-AzSubscription -SubscriptionId $this.ConfigInfo.Configuration.SubscriptionID | Select-AzSubscription
