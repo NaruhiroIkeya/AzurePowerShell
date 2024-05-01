@@ -86,7 +86,7 @@ Class AzureLogonFunction {
           }
           "ManagedID" {
             $this.Log.info("Azureへログイン:開始（マネージドID）")
-            $LoginInfo = Connect-AzAccount -Identify
+            $LoginInfo = Connect-AzAccount -Identity
           }
           "User" {
             ##########################
