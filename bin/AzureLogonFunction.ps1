@@ -114,13 +114,13 @@ Class AzureLogonFunction {
         $this.Log.error("Azureへログイン:失敗")
         return $false 
       }
-      Enable-AzContextAutosave
       if($LoginInfo) {
+        Enable-AzContextAutosave
         $this.Log.info("Azureへログイン:成功")
         $this.Log.info("TennantName:" + $LoginInfo.Context.Tenant.Name)
-        $this.Log.info("TennantNameID:" + $LoginInfo.Context.Tenant.Id)
+        $this.Log.info("TennantNameId:" + $LoginInfo.Context.Tenant.Id)
         $this.Log.info("SubscriptionName:" + $Subscription.Subscription.Name)
-        $this.Log.info("SubscriptionName:" + $Subscription.Subscription.Id)
+        $this.Log.info("SubscriptionId:" + $Subscription.Subscription.Id)
         $this.Log.info("Account:" + $Subscription.Account.Id)
       }
       return $true
