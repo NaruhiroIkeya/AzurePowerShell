@@ -25,5 +25,5 @@ $SecureString = ConvertTo-SecureString -String $PlainPassword -AsPlainText -Forc
 $EncryptedPassword = ConvertFrom-SecureString -SecureString $SecureString -key $EncryptedKey
 
 Write-Host "If your password string contains special characters, please escape them with backquote (``). ex.) `$`,`&```"`'"
-Write-host "<encryptedkey>$KeyString </encryptedkey>"
+Write-host "<encryptedkey>$KeyString</encryptedkey>"
 Write-host "<encryptedpass>$EncryptedPassword</encryptedpass>"

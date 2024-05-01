@@ -53,7 +53,7 @@ if($Stdout) {
     $LogBaseName = (Get-ChildItem $MyInvocation.ScriptName).BaseName
   }
   $LogFileName = $LogBaseName + ".log"
-  $Log = New-Object LogController($($LogFilePath + "\" + $LogFileName), $false, $true, $LogBaseName, $false)
+  $Log = New-Object LogController($(Join-Path -Path $LogFilePath -ChildPath $LogFileName), $false, $true, $LogBaseName, $false)
   $Log.DeleteLog($SaveDays)
   $Log.Info("ログファイル名:$($Log.GetLogInfo())")
 }

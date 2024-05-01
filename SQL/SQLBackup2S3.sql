@@ -3,7 +3,7 @@ DECLARE @Database VARCHAR(5) = 'SID'
 DECLARE @DAYSTR CHAR(12) = FORMAT(GETDATE(),'yyyyMMddHHmm')
 DECLARE @BACKUP_FILE VARCHAR(50) = N's3://<endpoint>:<port>/<bucket>/' + @Database + '_FULL_' + @DAYSTR
 
-@ExecSQL = 'BACKUP DATABASE [] TO URL =' + @BACKUP_FILE + '_01.bak, ' + 
+@ExecSQL = 'BACKUP DATABASE [' + @DATABASE + '] TO URL =' + @BACKUP_FILE + '_01.bak, ' + 
    'URL = ' + @BACKUP_FILE + '_02.bak,' +
    'URL = ' + @BACKUP_FILE + '_03.bak', +
    'URL = ' + @BACKUP_FILE + '_04.bak', +
@@ -21,7 +21,7 @@ DECLARE @BACKUP_FILE VARCHAR(50) = N's3://<endpoint>:<port>/<bucket>/' + @Databa
    'URL = ' + @BACKUP_FILE + '_16.bak', +
    'URL = ' + @BACKUP_FILE + '_17.bak', +
    'URL = ' + @BACKUP_FILE + '_18.bak', +
-   'URL = ' + @BACKUP_FILE + '_19.bak', +
+   'URL = ' + @BACKUP_FILE + '_21.bak', +
    'URL = ' + @BACKUP_FILE + '_20.bak', +
    'URL = ' + @BACKUP_FILE + '_21.bak', +
    'URL = ' + @BACKUP_FILE + '_22.bak', +

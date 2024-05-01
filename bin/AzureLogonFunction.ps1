@@ -46,6 +46,7 @@ Class AzureLogonFunction {
       ##########################
       if (($this.ConfigPath) -and (-not $(Test-Path $this.ConfigPath))) {
         $this.log.error("認証情報ファイルが存在しません。")
+        return $false
       } else {
         $this.log.info("認証情報ファイルパス：" + (Split-Path $this.ConfigPath -Parent))
         $this.log.info("認証情報ファイル名：" + (Get-ChildItem $this.ConfigPath).Name)
@@ -68,32 +69,40 @@ Class AzureLogonFunction {
       $LoginInfo = $null
       $Subscription = $null
       if (-not $this.Log) { if (-not $this.Initialize()) {return $false} }
-      if (-not $(Test-Path $this.ConfigPath)) {
-        ##########################
-        # Azureへのログイン
-        ##########################
-        $this.log.info("Azureへログイン:開始")
-        $LoginInfo = Login-AzAccount
-      } elseif ($this.ConfigInfo) {
-        if ((-not $this.ConfigInfo.Configuration.Key) -or (-not $this.ConfigInfo.Configuration.ApplicationID)) {
-          ##########################
-          # Azureへのログイン
-          ##########################
-          $this.log.info("Azureへログイン:開始")
-          $LoginInfo = Login-AzAccount -Tenant $this.ConfigInfo.Configuration.TennantID 
-        } else {
-          ##########################
-          # Azureへのログイン
-          ##########################
-          $this.ConfigInfo.Configuration.Key
-          $this.Log.info("サービスプリンシパルを利用しAzureへログイン:開始")
-          $decrypt = ConvertTo-SecureString -String $this.ConfigInfo.Configuration.Key
-          $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($decrypt)
-          $Password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
-          $SecPasswd = ConvertTo-SecureString $Password -AsPlainText -Force
-          $MyCreds = New-Object System.Management.Automation.PSCredential ($this.ConfigInfo.Configuration.ApplicationID, $SecPasswd)
-          $LoginInfo = Connect-AzAccount -ServicePrincipal -Tenant $this.ConfigInfo.Configuration.TennantID -Credential $MyCreds -WarningAction Ignore
+      if ($this.ConfigInfo) {
+        switch ($this.ConfigInfo.Configuration.AuthenticationMethod) {
+          "ServicePrincipal" {
+            ##########################
+            # Azureへのログイン(ServicePrincipal)
+            ##########################
+            $this.ConfigInfo.Configuration.Key
+            $this.Log.info("Azureへログイン:開始（サービスプリンシパル）")
+            $decrypt = ConvertTo-SecureString -String $this.ConfigInfo.Configuration.Key
+            $bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($decrypt)
+            $Password = [System.Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
+            $SecPasswd = ConvertTo-SecureString $Password -AsPlainText -Force
+            $MyCreds = New-Object System.Management.Automation.PSCredential($this.ConfigInfo.Configuration.ApplicationID, $SecPasswd)
+            $LoginInfo = Connect-AzAccount -ServicePrincipal -Tenant $this.ConfigInfo.Configuration.TennantID -Credential $MyCreds -WarningAction Ignore
+          }
+          "ManagedID" {
+            $this.Log.info("Azureへログイン:開始（マネージドID）")
+            $LoginInfo = Connect-AzAccount -Identify
+          }
+          "User" {
+            ##########################
+            # Azureへのログイン(ユーザー認証)
+            ##########################
+            $this.log.info("Azureへログイン:開始（ユーザー認証）")
+            $LoginInfo = Connect-AzAccount -Tenant $this.ConfigInfo.Configuration.TennantID 
+          }
+          default {
+            $this.Log.error("Azureへログイン:失敗:認証方式設定不備")
+            return $false 
+          }
         }
+        ##########################
+        # サブスクリプションの変更
+        ##########################
         if($this.ConfigInfo.Configuration.SubscriptionID) {
           $Subscription = Get-AzSubscription -SubscriptionId $this.ConfigInfo.Configuration.SubscriptionID | Select-AzSubscription
           if(-not $Subscription) {
@@ -101,15 +110,19 @@ Class AzureLogonFunction {
           }
         }
       }
-      if(-not $LoginInfo) { 
+      if(-not $LoginInfo -and -not $Subscription) { 
         $this.Log.error("Azureへログイン:失敗")
         return $false 
       }
       Enable-AzContextAutosave
-      $this.Log.info("Azureへログイン:成功")
-      $this.Log.info("Account:" + $LoginInfo.Context.Account.Id)
-      $this.Log.info("Subscription:" + $Subscription.Name)
-      $this.Log.info("TennantId:" + $LoginInfo.Context.Tenant.Id)
+      if($LoginInfo) {
+        $this.Log.info("Azureへログイン:成功")
+        $this.Log.info("TennantName:" + $LoginInfo.Context.Tenant.Name)
+        $this.Log.info("TennantNameID:" + $LoginInfo.Context.Tenant.Id)
+        $this.Log.info("SubscriptionName:" + $Subscription.Subscription.Name)
+        $this.Log.info("SubscriptionName:" + $Subscription.Subscription.Id)
+        $this.Log.info("Account:" + $Subscription.Account.Id)
+      }
       return $true
     } catch {
       $this.Log.Error("処理中にエラーが発生しました。")
