@@ -83,6 +83,7 @@ Class AzureLogonFunction {
             $SecPasswd = ConvertTo-SecureString $Password -AsPlainText -Force
             $MyCreds = New-Object System.Management.Automation.PSCredential($this.ConfigInfo.Configuration.ApplicationID, $SecPasswd)
             $LoginInfo = Connect-AzAccount -ServicePrincipal -Tenant $this.ConfigInfo.Configuration.TennantID -Credential $MyCreds -WarningAction Ignore
+            Enable-AzContextAutosave
           }
           "ManagedID" {
             $this.Log.info("Azureへログイン:開始（マネージドID）")
@@ -115,7 +116,6 @@ Class AzureLogonFunction {
         return $false 
       }
       if($LoginInfo) {
-        Enable-AzContextAutosave
         $this.Log.info("Azureへログイン:成功")
         $this.Log.info("TennantName:" + $LoginInfo.Context.Tenant.Name)
         $this.Log.info("TennantNameId:" + $LoginInfo.Context.Tenant.Id)
