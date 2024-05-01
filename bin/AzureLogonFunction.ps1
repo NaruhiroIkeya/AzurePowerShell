@@ -5,8 +5,8 @@
 ## @name:AzureLogonFunction.ps1
 ## @summary:Azure Logon 
 ##
-## @since:2020/05/01
-## @version:1.1
+## @since:2025/05/01
+## @version:1.2
 ## @see:
 ## @parameter
 ##  1:Azure Login認証ファイルパス
