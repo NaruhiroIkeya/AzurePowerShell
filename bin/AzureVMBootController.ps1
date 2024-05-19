@@ -61,7 +61,7 @@ if($Stdout -and $Eventlog) {
   } else {
     $LogBaseName = (Get-ChildItem $MyInvocation.ScriptName).BaseName
   }
-  $LogFileName = $LogBaseName + ".log"
+  $LogFileName = $LogBaseName + "_" + $AzureVMName + ".log"
   $Log = New-Object LogController($($LogFilePath + "\" + $LogFileName), $false, $true, $LogBaseName, $false)
   $Log.DeleteLog($SaveDays)
   $Log.Info("ログファイル名:$($Log.GetLogInfo())")
@@ -145,7 +145,7 @@ try {
     ##############################
     if($AzureVMStatus.Status -eq "PowerState/running") { 
       $Log.Info("AzureVMを停止します。")
-      $JobResult = Get-AzVM -ResourceGroupName $ResourceGroupName  -Name $AzureVMName | ForEach-Object { Stop-AzVM -ResourceGroupName $_.ResourceGroupName -Name $_.Name -Force }
+      $JobResult = Get-AzVM -ResourceGroupName $ResourceGroupName -Name $AzureVMName | ForEach-Object { Stop-AzVM -ResourceGroupName $_.ResourceGroupName -Name $_.Name -Force }
       if($JobResult.Status -eq "Failed") {
         $Log.Error("AzureVM停止ジョブがエラー終了しました。")
         $Log.Error($($JobResult | Format-List | Out-String -Stream))
