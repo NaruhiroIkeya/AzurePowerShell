@@ -90,18 +90,41 @@ Function Get-FileList($Path, $Files) {
 # 期限切れファイルの削除
 Function Remove-ExpiredFiles($Path, $FileExt, $Term) {
 
-  $Log.Info("ファイルローテーション開始:")
-  $Log.Info("ファイルローテーション開始:$($Term)日以前のファイルを削除します。")
   $Log.Info("対象フォルダ:$($Path)")
-  $ReturnObj = Invoke-Command "forfiles" $env:comspec "/C FORFILES /P `"$Path`" /M *.$FileExt /D -$Term /C `"CMD /C IF @isdir==FALSE ECHO @path 2>nul`""
+  $Log.Info("ファイルローテーション開始:$($Term)日以前のファイルを削除します。")
+  $ReturnObj = Invoke-Command "forfiles" $env:comspec "/C FORFILES /P ""$Path"" /M *.$FileExt /S /D -$Term /C ""CMD /C IF @isdir==FALSE @ECHO @path"""
   if (-not $ReturnObj.ExitCode) {
     $Log.Info("削除対象ファイル`r`n$($ReturnObj.StdOut)")
-    $ReturnObj = Invoke-Command "forfiles" $env:comspec "/C FORFILES /P `"$Path`" /M *.$FileExt /D -$Term /C `"CMD /C IF @isdir==FALSE DEL /Q @path`""
+    $ReturnObj = Invoke-Command "forfiles" $env:comspec "/C FORFILES /P ""$Path"" /M *.$FileExt /S /D -$Term /C ""CMD /C IF @isdir==FALSE DEL /Q @path"""
     if (-not $ReturnObj.ExitCode) {
-      $Log.Info("ローカルファイル削除`r`n$($ReturnObj.StdOut)")
+      $Log.Info("ファイル削除`r`n$($ReturnObj.StdOut)")
     } else {
       $Log.Warn("$($ReturnObj.StdErr)")
       return 9
+    }
+  } else {
+    $Log.Warn("$($ReturnObj.StdErr)")
+    return 9
+  }
+  return 0
+}
+
+##########################
+# 関数定義
+##########################
+# 空フォルダの削除
+Function Remove-EmptyFolders($Path) {
+
+  $Log.Info("空フォルダの削除")
+  $ReturnObj = Invoke-Command "for" $env:comspec "/C FOR /f ""delims="" %d in ('dir ""$Path"" /ad /b /s ^| sort /r') do @ECHO ""%d"""
+  if (-not $ReturnObj.ExitCode) {
+    $Log.Info("削除対象フォルダ`r`n$($ReturnObj.StdOut)")
+    $ReturnObj = Invoke-Command "for" $env:comspec "/C FOR /f ""delims="" %d in ('dir ""$Path"" /ad /b /s ^| sort /r') do @RD ""%d"" /q 2>nul"
+    if (-not $ReturnObj.ExitCode) {
+      $Log.Info("空フォルダを削除しました。")
+    } else {
+      $Log.Info("空フォルダがありませんでした。")
+      return 0
     }
   } else {
     $Log.Warn("$($ReturnObj.StdErr)")
@@ -152,111 +175,113 @@ try {
   }
     
   if ($ConfigInfo) {
-    foreach ($Target in $ConfigInfo.Configuration.Target) {
-      $Log.Info("$($Target.Title):開始")
-      $Log.Info("$($Target.RemoteHost)に接続します")
-      $connectTestResult = Test-NetConnection -ComputerName $Target.RemoteHost -Port 445
-      if (-not ($connectTestResult.TcpTestSucceeded)) {
+    foreach ($TargetConfig in $ConfigInfo.Configuration.Target) {
+      $Log.Info("$($TargetConfig.Title):開始")
+      $Log.Info("$($TargetConfig.RemoteHost)に接続します")
+      $ConResult = Test-NetConnection -ComputerName $TargetConfig.RemoteHost -Port 445
+      if (-not ($ConResult.TcpTestSucceeded)) {
         $Log.Error("共有ディスクに接続できませんでした。")
         $ErrorFlg = $true
         break
       }
 
-      switch($Target.Mode) {
+      switch($TargetConfig.Mode) {
         "Mirror" {
-          ##########################
-          # 退避処理開始
-          ##########################
-          # 再起動時にドライブが維持されるように、パスワードを保存する
-          cmd.exe /C "cmdkey /add:`"$($Target.RemoteHost)`" /user:`"$($Target.RemoteUser)`" /pass:`"$($Target.RemotePass)`""
+          if ($ConResult.TcpTestSucceeded) {
+            ##########################
+            # 退避処理開始
+            ##########################
+            # 再起動時にドライブが維持されるように、パスワードを保存する
+            cmd.exe /C "cmdkey /add:`"$($TargetConfig.RemoteHost)`" /user:`"$($TargetConfig.RemoteUser)`" /pass:`"$($TargetConfig.RemotePass)`""
 
-          # 共有フォルダをドライブをマウントする
-          $Log.Info("\\$($Target.RemoteHost)\$($Target.RemotePath)を$($Target.RemoteDrive)ドライブにマウントします")
-          New-PSDrive -Name $Target.RemoteDrive -PSProvider FileSystem -Root "\\$($Target.RemoteHost)\$($Target.RemotePath)" -Persist
+            # 共有フォルダをドライブをマウントする
+            $Log.Info("\\$($TargetConfig.RemoteHost)\$($TargetConfig.RemotePath)を$($TargetConfig.RemoteDrive)ドライブにマウントします")
+            New-PSDrive -Name $TargetConfig.RemoteDrive -PSProvider FileSystem -Root "\\$($TargetConfig.RemoteHost)\$($TargetConfig.RemotePath)" -Persist
 
-          ##########################
-          # ローカルファイル一覧
-          ##########################
-          $SourcePath = "$($Target.LocalPath)"
-          Get-FileList $SourcePath "*.$($Target.FileExt)"
+            ##########################
+            # ローカルファイル一覧
+           ##########################
+            $SourcePath = "$($TargetConfig.LocalPath)"
+            Get-FileList $SourcePath "*.$($TargetConfig.FileExt)"
 
-          ##########################
-          # リモートファイル一覧
-          ##########################
-          $TargetPath = "$($Target.RemoteDrive):"
-          Get-FileList $TargetPath "*.$($Target.FileExt)"
+            ##########################
+            # リモートファイル一覧
+            ##########################
+            $TargetPath = "$($TargetConfig.RemoteDrive):"
+            Get-FileList $TargetPath "*.$($TargetConfig.FileExt)"
 
-          ##########################
-          # ファイルコピー
-          ##########################
-          $Log.Info("コピー元ファイル:$SourcePath")
-          $Log.Info("コピー先フォルダ:$TargetPath")
-          $ReturnObj = Invoke-Command "robocopy" $env:comspec "/C ROBOCOPY `"$SourcePath`" $TargetPath /MIR /DCOPY:DAT /NP /MT:8"
-          switch($ReturnObj.ExitCode) {
-            # コピーしたファイルがない
-            0 {
-              $Log.Info("コピー対象のファイルがありませんでした。")
-              $Log.Info("ファイルコピー結果`r`n$($ReturnObj.StdOut)")
-              break
+            ##########################
+            # ファイルコピー
+            ##########################
+            $Log.Info("コピー元フォルダ:$SourcePath")
+            $Log.Info("コピー先フォルダ:$TargetPath")
+            $ReturnObj = Invoke-Command "robocopy" $env:comspec "/C ROBOCOPY `"$SourcePath`" $TargetPath /MIR /DCOPY:DAT /NP /MT:8"
+            switch($ReturnObj.ExitCode) {
+              # コピーしたファイルがない
+              0 {
+                $Log.Info("コピー対象のファイルがありませんでした。")
+                $Log.Info("ファイルコピー結果`r`n$($ReturnObj.StdOut)")
+                break
+              }
+              # コピーしたファイルがある
+              ({$_ -ge 1 -and $_ -le 8}) {
+                $Log.Info("ファイルコピー結果`r`n$($ReturnObj.StdOut)")
+                break
+              }
+              # エラーを伴うコピーしたファイルがある。
+              ({$_ -gt 8}) {
+                $Log.Info("エラーが発生しました。")
+                $Log.Info("ファイルコピー結果`r`n$($ReturnObj.StdOut)")
+                $ErrorFlg = $true
+                break
+              }
+              default {
+                $Log.Info("Other")
+              }
             }
-            # コピーしたファイルがある
-            ({$_ -ge 1 -and $_ -le 8}) {
-              $Log.Info("ファイルコピー結果`r`n$($ReturnObj.StdOut)")
-              break
-            }
-            # エラーを伴うコピーしたファイルがある。
-            ({$_ -gt 8}) {
-              $Log.Info("エラーが発生しました。")
-              $Log.Info("ファイルコピー結果`r`n$($ReturnObj.StdOut)")
-              $ErrorFlg = $true
-              break
-            }
-            default {
-              $Log.Info("Other")
-            }
+            ##########################
+            # ローカルファイル一覧
+            ##########################
+            Get-FileList $SourcePath "*.$($TargetConfig.FileExt)"
+
+            ##########################
+            # リモートファイル一覧
+            ##########################
+            Get-FileList $TargetPath "*.$($TargetConfig.FileExt)"
+
+            # 共有フォルダのアンマウント
+            Get-PSDrive $TargetConfig.RemoteDrive | Remove-PSDrive
           }
-          ##########################
-          # ローカルファイル一覧
-          ##########################
-          Get-FileList $SourcePath "*.$($Target.FileExt)"
-
-          ##########################
-          # リモートファイル一覧
-          ##########################
-          Get-FileList $TargetPath "*.$($Target.FileExt)"
-
-          # 共有フォルダのアンマウント
-          Get-PSDrive $Target.RemoteDrive | Remove-PSDrive
         }
 
         "DateDirectory" {
           ##########################
           # 退避処理開始
           ##########################
-          if ($connectTestResult.TcpTestSucceeded) {
+          if ($ConResult.TcpTestSucceeded) {
             # 再起動時にドライブが維持されるように、パスワードを保存する
-            cmd.exe /C "cmdkey /add:`"$($Target.RemoteHost)`" /user:`"$($Target.RemoteUser)`" /pass:`"$($Target.RemotePass)`""
+            cmd.exe /C "cmdkey /add:`"$($TargetConfig.RemoteHost)`" /user:`"$($TargetConfig.RemoteUser)`" /pass:`"$($TargetConfig.RemotePass)`""
 
             # 共有フォルダをドライブをマウントする
-            $Log.Info("\\$($Target.RemoteHost)\$($Target.RemotePath)を$($Target.RemoteDrive)ドライブにマウントします")
-            New-PSDrive -Name $Target.RemoteDrive -PSProvider FileSystem -Root "\\$($Target.RemoteHost)\$($Target.RemotePath)" -Persist
+            $Log.Info("\\$($TargetConfig.RemoteHost)\$($TargetConfig.RemotePath)を$($TargetConfig.RemoteDrive)ドライブにマウントします")
+            New-PSDrive -Name $TargetConfig.RemoteDrive -PSProvider FileSystem -Root "\\$($TargetConfig.RemoteHost)\$($TargetConfig.RemotePath)" -Persist
 
             ##########################
             # ローカルファイル一覧
             ##########################
-            $SourcePath = "$($Target.LocalPath)"
-            Get-FileList $SourcePath "*.$($Target.FileExt)"
+            $SourcePath = "$($TargetConfig.LocalPath)"
+            Get-FileList $SourcePath "*.$($TargetConfig.FileExt)"
 
             ##########################
             # リモートファイル一覧
             ##########################
-            $TargetPath = "$($Target.RemoteDrive):"
-            Get-FileList $TargetPath "*.$($Target.FileExt)"
+            $TargetPath = "$($TargetConfig.RemoteDrive):"
+            Get-FileList $TargetPath "*.$($TargetConfig.FileExt)"
 
             ##########################
             # ファイルコピー
             ##########################
-            $Log.Info("コピー元ファイル:$SourcePath")
+            $Log.Info("コピー元フォルダ:$SourcePath")
             $Log.Info("コピー先フォルダ:$(Join-Path $TargetPath (Get-Date).ToString("yyyyMMdd"))")
             $CopyLog = $(Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath log -Resolve) + "\" + (Get-ChildItem $MyInvocation.MyCommand.Path).BaseName + "_Robocopy_" + $(Get-Date -Format "yyyyMMddHHmmss") + ".log"
             $ReturnObj = Invoke-Command "robocopy" $env:comspec "/C ROBOCOPY `"$SourcePath`" $(Join-Path $TargetPath (Get-Date).ToString("yyyyMMdd")) /MT:4 /J /R:2 /W:1 /MIR /IT /COPY:DAT /DCOPY:DAT /NP /FFT /COMPRESS /LOG:$CopyLog"
@@ -275,7 +300,7 @@ try {
                 ##########################
                 $Log.Info("ディレクトリ削除:開始")
                 Get-ChildItem $TargetPath -Recurse | Where-Object {($_.Mode -eq "d-----") -and ($_.Name -lt (Get-Date).AddDays(-1 * $ConfigInfo.Configuration.LocalTerm).ToString("yyyyMMdd"))} | Remove-Item -Recurse -Force
-#                $RemoveDir = $(Join-Path $TargetPath (Get-Date).AddDays(-1 * $Target.RemoteTerm).ToString("yyyyMMdd"))
+#                $RemoveDir = $(Join-Path $TargetPath (Get-Date).AddDays(-1 * $TargetConfig.RemoteTerm).ToString("yyyyMMdd"))
 #                if (Test-Path $RemoveDir) {
 #                  $Return = Remove-Item -Recurse $RemoveDir -Force
 #                  $Log.Info("ディレクトリ削除:$($RemoveDir)完了")
@@ -298,48 +323,146 @@ try {
             ##########################
             # ローカルファイル一覧
             ##########################
-            Get-FileList $SourcePath "*.$($Target.FileExt)"
+            Get-FileList $SourcePath "*.$($TargetConfig.FileExt)"
 
             ##########################
             # リモートファイル一覧
             ##########################
-            Get-FileList $TargetPath "*.$($Target.FileExt)"
+            Get-FileList $TargetPath "*.$($TargetConfig.FileExt)"
 
             # 共有フォルダのアンマウント
-            Get-PSDrive $Target.RemoteDrive | Remove-PSDrive
+            Get-PSDrive $TargetConfig.RemoteDrive | Remove-PSDrive
           }
+        }
+
+        "TimestampDir" {
+          ##########################
+          # 退避処理開始
+          ##########################
+          if ($ConResult.TcpTestSucceeded) {
+            # 再起動時にドライブが維持されるように、パスワードを保存する
+            cmd.exe /C "cmdkey /add:`"$($TargetConfig.RemoteHost)`" /user:`"$($TargetConfig.RemoteUser)`" /pass:`"$($TargetConfig.RemotePass)`""
+
+            # 共有フォルダをドライブをマウントする
+            $Log.Info("\\$($TargetConfig.RemoteHost)\$($TargetConfig.RemotePath)を$($TargetConfig.RemoteDrive)ドライブにマウントします")
+            New-PSDrive -Name $TargetConfig.RemoteDrive -PSProvider FileSystem -Root "\\$($TargetConfig.RemoteHost)\$($TargetConfig.RemotePath)" -Persist
+
+            ##########################
+            # ローカルファイル一覧
+            ##########################
+            $SourcePath = "$($TargetConfig.LocalPath)"
+            Get-FileList $SourcePath "*.$($TargetConfig.FileExt)"
+
+            ##########################
+            # リモートファイル一覧
+            ##########################
+            $TargetPath = "$($TargetConfig.RemoteDrive):"
+            Get-FileList $TargetPath "*.$($TargetConfig.FileExt)"
+
+            ##########################
+            # ファイルコピー
+            ##########################
+            $Log.Info("コピー元フォルダ:$SourcePath")
+            $TargetFiles = Get-ChildItem $SourcePath "*.$($TargetConfig.FileExt)"
+            foreach($Target in $TargetFiles){
+              $Log.Info("コピー対象ファイル:$($Target.Name)")
+              $Log.Info("コピー先フォルダ:$(Join-Path $TargetPath $Target.CreationTime.ToString("yyyymmdd"))")
+              $CopyLog = $(Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath log -Resolve) + "\" + (Get-ChildItem $MyInvocation.MyCommand.Path).BaseName + "_Robocopy_" + $(Get-Date -Format "yyyyMMdd") + ".log"
+              $ReturnObj = Invoke-Command "robocopy" $env:comspec "/C ROBOCOPY `"$SourcePath`" $(Join-Path $TargetPath $Target.CreationTime.ToString("yyyyMMdd")) $($Target.Name) /MT:4 /J /R:2 /W:1 /COPY:DAT /DCOPY:DAT /NP /FFT /COMPRESS /LOG+:$CopyLog"
+              switch($ReturnObj.ExitCode) {
+                # コピーしたファイルがない
+                0 {
+                  $Log.Info("コピー済みです。")
+                  $Log.Info("ファイルコピー結果`r`n$($ReturnObj.StdOut)")
+                  break
+                }
+                # コピーしたファイルがある
+                ({$_ -ge 1 -and $_ -le 8}) {
+                  $Log.Info("ファイルコピー結果`r`n$($ReturnObj.StdOut)")
+                }
+                # エラーを伴うコピーしたファイルがある。
+                ({$_ -gt 8}) {
+                  $Log.Info("エラーが発生しました。")
+                  $Log.Info("ファイルコピー結果`r`n$($ReturnObj.StdOut)")
+                  $ErrorFlg = $true
+                  break
+                }
+                default {
+                  $Log.Info("Other")
+                }
+              }
+            }
+
+            if(-not $ErrorFlg) {
+              ##########################
+              # リモートファイル削除
+              ##########################
+              $Log.Info("$($TargetConfig.RemoteTerm)日以上前のファイル削除:開始")
+              $Return = Remove-ExpiredFiles $TargetPath $TargetConfig.FileExt $TargetConfig.RemoteTerm
+              if (-not $Return) {
+                $Log.Info("ファイル削除:完了")
+              } else {
+                $Log.Warn("ファイル削除:エラー終了")
+              }
+              $Return = Remove-EmptyFolders $TargetPath
+
+              ##########################
+              # ローカルファイル削除
+              ##########################
+              $Log.Info("$($TargetConfig.LocalTerm)日以上前のファイル削除:開始")
+              $Return = Remove-ExpiredFiles $SourcePath $TargetConfig.FileExt $TargetConfig.LocalTerm
+              if (-not $Return) {
+                $Log.Info("ファイル削除:完了")
+              } else {
+                $Log.Warn("ファイル削除:エラー終了")
+              }
+              break
+            }
+          }
+          ##########################
+          # ローカルファイル一覧
+          ##########################
+          Get-FileList $SourcePath "*.$($TargetConfig.FileExt)"
+
+          ##########################
+          # リモートファイル一覧
+          ##########################
+          Get-FileList $TargetPath "*.$($TargetConfig.FileExt)"
+
+          # 共有フォルダのアンマウント
+          Get-PSDrive $TargetConfig.RemoteDrive | Remove-PSDrive
         }
 
         "RemoteCopy" {
           ##########################
           # 退避処理開始
           ##########################
-          if ($connectTestResult.TcpTestSucceeded) {
+          if ($ConResult.TcpTestSucceeded) {
             # 再起動時にドライブが維持されるように、パスワードを保存する
-            cmd.exe /C "cmdkey /add:`"$($Target.RemoteHost)`" /user:`"$($Target.RemoteUser)`" /pass:`"$($Target.RemotePass)`""
+            cmd.exe /C "cmdkey /add:`"$($TargetConfig.RemoteHost)`" /user:`"$($TargetConfig.RemoteUser)`" /pass:`"$($TargetConfig.RemotePass)`""
 
             # 共有フォルダをドライブをマウントする
-            $Log.Info("\\$($Target.RemoteHost)\$($Target.RemotePath)を$($Target.RemoteDrive)ドライブにマウントします")
-            New-PSDrive -Name $Target.RemoteDrive -PSProvider FileSystem -Root "\\$($Target.RemoteHost)\$($Target.RemotePath)" -Persist
+            $Log.Info("\\$($TargetConfig.RemoteHost)\$($TargetConfig.RemotePath)を$($TargetConfig.RemoteDrive)ドライブにマウントします")
+            New-PSDrive -Name $TargetConfig.RemoteDrive -PSProvider FileSystem -Root "\\$($TargetConfig.RemoteHost)\$($TargetConfig.RemotePath)" -Persist
 
             ##########################
             # ローカルファイル一覧
             ##########################
-            $SourcePath = "$($Target.LocalPath)"
-            Get-FileList $SourcePath "*.$($Target.FileExt)"
+            $SourcePath = "$($TargetConfig.LocalPath)"
+            Get-FileList $SourcePath "*.$($TargetConfig.FileExt)"
 
             ##########################
             # リモートファイル一覧
             ##########################
-            $TargetPath = "$($Target.RemoteDrive):"
-            Get-FileList $TargetPath "*.$($Target.FileExt)"
+            $TargetPath = "$($TargetConfig.RemoteDrive):"
+            Get-FileList $TargetPath "*.$($TargetConfig.FileExt)"
 
             ##########################
             # ファイルコピー
             ##########################
-            $Log.Info("コピー元ファイル:$SourcePath")
+            $Log.Info("コピー元フォルダ:$SourcePath")
             $Log.Info("コピー先フォルダ:$TargetPath")
-            $ReturnObj = Invoke-Command "robocopy" $env:comspec "/C ROBOCOPY `"$SourcePath`" $TargetPath *.$($Target.FileExt) /DCOPY:DAT /NP /MT:8"
+            $ReturnObj = Invoke-Command "robocopy" $env:comspec "/C ROBOCOPY `"$SourcePath`" $TargetPath *.$($TargetConfig.FileExt) /DCOPY:DAT /NP /MT:8"
             switch($ReturnObj.ExitCode) {
               # コピーしたファイルがない
               0 {
@@ -355,7 +478,7 @@ try {
                 # リモートファイル削除
                 ##########################
                 $Log.Info("ファイル削除:開始")
-                $Return = Remove-ExpiredFiles $TargetPath $Target.FileExt $Target.RemoteTerm
+                $Return = Remove-ExpiredFiles $TargetPath $TargetConfig.FileExt $TargetConfig.RemoteTerm
                 if (-not $Return) {
                   $Log.Info("ファイル削除:完了")
                 } else {
@@ -366,7 +489,7 @@ try {
                 # ローカルファイル削除
                 ##########################
                 $Log.Info("ファイル削除:開始")
-                $Return = Remove-ExpiredFiles $SourcePath $Target.FileExt $Target.LocalTerm
+                $Return = Remove-ExpiredFiles $SourcePath $TargetConfig.FileExt $TargetConfig.LocalTerm
                 if (-not $Return) {
                   $Log.Info("ファイル削除:完了")
                 } else {
@@ -388,24 +511,24 @@ try {
             ##########################
             # ローカルファイル一覧
             ##########################
-            Get-FileList $SourcePath "*.$($Target.FileExt)"
+            Get-FileList $SourcePath "*.$($TargetConfig.FileExt)"
 
             ##########################
             # リモートファイル一覧
             ##########################
-            Get-FileList $TargetPath "*.$($Target.FileExt)"
+            Get-FileList $TargetPath "*.$($TargetConfig.FileExt)"
 
             # 共有フォルダのアンマウント
-            Get-PSDrive $Target.RemoteDrive | Remove-PSDrive
+            Get-PSDrive $TargetConfig.RemoteDrive | Remove-PSDrive
           }
         }
 
         default {
-          $Log.Error("モード`($($Target.Mode)`)の指定が誤ってます。")
+          $Log.Error("モード`($($TargetConfig.Mode)`)の指定が誤ってます。")
           break
         }
       }
-      $Log.Info("$($Target.Title):完了")
+      $Log.Info("$($TargetConfig.Title):完了")
     }
   } else { exit 9 }
 
@@ -415,6 +538,6 @@ try {
 } catch {
   $Log.Error("処理中にエラーが発生しました。")
   $Log.Error($("" + $Error[0] | Format-List --DisplayError))
-  Get-PSDrive $Target.RemoteDrive | Remove-PSDrive
+  Get-PSDrive $TargetConfig.RemoteDrive | Remove-PSDrive
   exit 9 
 }
