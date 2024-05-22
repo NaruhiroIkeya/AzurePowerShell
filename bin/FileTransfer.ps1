@@ -71,7 +71,7 @@ try {
   ##########################
   if (($ConfigFile) -and (-not $(Test-Path $ConfigFile))) {
     $Log.Error("制御ファイルが存在しません。")
-    exit 9 
+    /xit 9 
   } else {
     $Log.Info("制御ファイルパス：" + (Split-Path $ConfigFile -Parent))
     $Log.Info("制御ファイル名：" + (Get-ChildItem $ConfigFile).Name)

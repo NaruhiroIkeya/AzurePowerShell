@@ -92,10 +92,10 @@ Function Remove-ExpiredFiles($Path, $FileExt, $Term) {
 
   $Log.Info("対象フォルダ:$($Path)")
   $Log.Info("ファイルローテーション開始:$($Term)日以前のファイルを削除します。")
-  $ReturnObj = Invoke-Command "forfiles" $env:comspec "/C FORFILES /P ""$Path"" /M *.$FileExt /S /D -$Term /C ""CMD /C IF @isdir==FALSE @ECHO @path"""
+  $ReturnObj = Invoke-Command "forfiles" $env:comspec "/C FORFILES /P `"$Path`" /M *.$FileExt /S /D -$Term /C `"CMD /C IF @isdir==FALSE ECHO @file`""
   if (-not $ReturnObj.ExitCode) {
     $Log.Info("削除対象ファイル`r`n$($ReturnObj.StdOut)")
-    $ReturnObj = Invoke-Command "forfiles" $env:comspec "/C FORFILES /P ""$Path"" /M *.$FileExt /S /D -$Term /C ""CMD /C IF @isdir==FALSE DEL /Q @path"""
+    $ReturnObj = Invoke-Command "forfiles" $env:comspec "/C FORFILES /P `"$Path`" /M *.$FileExt /S /D -$Term /C `"CMD /C IF @isdir==FALSE DEL /Q @path`""
     if (-not $ReturnObj.ExitCode) {
       $Log.Info("ファイル削除`r`n$($ReturnObj.StdOut)")
     } else {
@@ -116,10 +116,10 @@ Function Remove-ExpiredFiles($Path, $FileExt, $Term) {
 Function Remove-EmptyFolders($Path) {
 
   $Log.Info("空フォルダの削除")
-  $ReturnObj = Invoke-Command "for" $env:comspec "/C FOR /f ""delims="" %d in ('dir ""$Path"" /ad /b /s ^| sort /r') do @ECHO ""%d"""
+  $ReturnObj = Invoke-Command "for" $env:comspec "/C FOR /f `"delims=`" %d in ('dir `"$Path`" /ad /b /s ^| sort /r') do @ECHO `"%d`""
   if (-not $ReturnObj.ExitCode) {
     $Log.Info("削除対象フォルダ`r`n$($ReturnObj.StdOut)")
-    $ReturnObj = Invoke-Command "for" $env:comspec "/C FOR /f ""delims="" %d in ('dir ""$Path"" /ad /b /s ^| sort /r') do @RD ""%d"" /q 2>nul"
+    $ReturnObj = Invoke-Command "for" $env:comspec "/C FOR /f `"delims=`" %d in ('dir `"$Path`" /ad /b /s ^| sort /r') do @RD `"%d`" /q 2>nul"
     if (-not $ReturnObj.ExitCode) {
       $Log.Info("空フォルダを削除しました。")
     } else {
