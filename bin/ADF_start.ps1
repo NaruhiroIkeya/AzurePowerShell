@@ -45,7 +45,7 @@ Function Invoke-Command($commandTitle, $commandPath, $commandArguments) {
         StdOut = $Proc.StandardOutput.ReadToEnd()
         StdErr = $Proc.StandardError.ReadToEnd()
         ExitCode = $Proc.ExitCode
-    } | FL
+    } | Format-List
   }
   Catch {
      Exit 9
