@@ -1,5 +1,5 @@
 <################################################################################
-## Copyright(c) 2023 BeeX Inc. All rights reserved.
+## Copyright(c) 2024 BeeX Inc. All rights reserved.
 ## @auther#Naruhiro Ikeya
 ##
 ## @name:FileKeeper.ps1
@@ -28,6 +28,7 @@ param (
 ##########################
 ## モジュールのロード
 ##########################
+Import-Module CredentialManager
 . .\LogController.ps1
 
 ##########################
@@ -62,7 +63,7 @@ Function Invoke-Command($commandTitle, $commandPath, $commandArguments) {
         StdOut = $Proc.StandardOutput.ReadToEnd()
         StdErr = $Proc.StandardError.ReadToEnd()
         ExitCode = $Proc.ExitCode
-    }
+    } | Format-List
   }
   Catch {
      Exit 9
@@ -176,13 +177,36 @@ try {
     
   if ($ConfigInfo) {
     foreach ($TargetConfig in $ConfigInfo.Configuration.Target) {
+      $MountFlg = $false
       $Log.Info("$($TargetConfig.Title):開始")
-      $Log.Info("$($TargetConfig.RemoteHost)に接続します")
+      $Log.Info("$($TargetConfig.RemoteHost)に接続します。")
       $ConResult = Test-NetConnection -ComputerName $TargetConfig.RemoteHost -Port 445
       if (-not ($ConResult.TcpTestSucceeded)) {
         $Log.Error("共有ディスクに接続できませんでした。")
         $ErrorFlg = $true
         break
+      } else {
+        if ($DriveInfo = Get-PSDrive -Name $TargetConfig.RemoteDrive -ErrorAction Ignore) {
+          $MountFlg = $true
+          $Log.Info("$($DriveInfo.Name)はマウントされています。")
+        } else {
+          $Log.Info("\\$($TargetConfig.RemoteHost)\$($TargetConfig.RemotePath)を$($TargetConfig.RemoteDrive)ドライブにマウントします。")
+          # 再起動時にドライブが維持されるように、パスワードを保存する
+          if (-not ($cred = Get-StoredCredential -Target $($TargetConfig.RemoteHost))) {
+            $Result = New-StoredCredential -Target $($TargetConfig.RemoteHost) -UserName $($TargetConfig.RemoteUser) -Password $($TargetConfig.RemotePass) -Persist Enterprise
+            $Log.Info("$($Result.Comment)")
+          }
+          # 共有フォルダをドライブをマウントする
+          $SecurePass = ConvertTo-SecureString $TargetConfig.RemotePass -AsPlainText -Force
+          $cred =  New-Object System.Management.Automation.PSCredential $TargetConfig.RemoteUser, $SecurePass
+          if ($Result = New-PSDrive -Name $TargetConfig.RemoteDrive -PSProvider FileSystem -Root "\\$($TargetConfig.RemoteHost)\$($TargetConfig.RemotePath)" -Persist -Credential $cred) {
+            $Log.Info("\\$($TargetConfig.RemoteHost)\$($TargetConfig.RemotePath)を$($TargetConfig.RemoteDrive)ドライブにマウントしました。")
+          } else {
+            $Log.Info("共有ディスクのマウントに失敗しました。")
+            $ErrorFlg = $true
+            break
+          }
+        }
       }
 
       switch($TargetConfig.Mode) {
@@ -191,12 +215,6 @@ try {
             ##########################
             # 退避処理開始
             ##########################
-            # 再起動時にドライブが維持されるように、パスワードを保存する
-            cmd.exe /C "cmdkey /add:`"$($TargetConfig.RemoteHost)`" /user:`"$($TargetConfig.RemoteUser)`" /pass:`"$($TargetConfig.RemotePass)`""
-
-            # 共有フォルダをドライブをマウントする
-            $Log.Info("\\$($TargetConfig.RemoteHost)\$($TargetConfig.RemotePath)を$($TargetConfig.RemoteDrive)ドライブにマウントします")
-            New-PSDrive -Name $TargetConfig.RemoteDrive -PSProvider FileSystem -Root "\\$($TargetConfig.RemoteHost)\$($TargetConfig.RemotePath)" -Persist
 
             ##########################
             # ローカルファイル一覧
@@ -249,8 +267,6 @@ try {
             ##########################
             Get-FileList $TargetPath "*.$($TargetConfig.FileExt)"
 
-            # 共有フォルダのアンマウント
-            Get-PSDrive $TargetConfig.RemoteDrive | Remove-PSDrive
           }
         }
 
@@ -259,12 +275,6 @@ try {
           # 退避処理開始
           ##########################
           if ($ConResult.TcpTestSucceeded) {
-            # 再起動時にドライブが維持されるように、パスワードを保存する
-            cmd.exe /C "cmdkey /add:`"$($TargetConfig.RemoteHost)`" /user:`"$($TargetConfig.RemoteUser)`" /pass:`"$($TargetConfig.RemotePass)`""
-
-            # 共有フォルダをドライブをマウントする
-            $Log.Info("\\$($TargetConfig.RemoteHost)\$($TargetConfig.RemotePath)を$($TargetConfig.RemoteDrive)ドライブにマウントします")
-            New-PSDrive -Name $TargetConfig.RemoteDrive -PSProvider FileSystem -Root "\\$($TargetConfig.RemoteHost)\$($TargetConfig.RemotePath)" -Persist
 
             ##########################
             # ローカルファイル一覧
@@ -330,8 +340,6 @@ try {
             ##########################
             Get-FileList $TargetPath "*.$($TargetConfig.FileExt)"
 
-            # 共有フォルダのアンマウント
-            Get-PSDrive $TargetConfig.RemoteDrive | Remove-PSDrive
           }
         }
 
@@ -340,12 +348,6 @@ try {
           # 退避処理開始
           ##########################
           if ($ConResult.TcpTestSucceeded) {
-            # 再起動時にドライブが維持されるように、パスワードを保存する
-            cmd.exe /C "cmdkey /add:`"$($TargetConfig.RemoteHost)`" /user:`"$($TargetConfig.RemoteUser)`" /pass:`"$($TargetConfig.RemotePass)`""
-
-            # 共有フォルダをドライブをマウントする
-            $Log.Info("\\$($TargetConfig.RemoteHost)\$($TargetConfig.RemotePath)を$($TargetConfig.RemoteDrive)ドライブにマウントします")
-            New-PSDrive -Name $TargetConfig.RemoteDrive -PSProvider FileSystem -Root "\\$($TargetConfig.RemoteHost)\$($TargetConfig.RemotePath)" -Persist
 
             ##########################
             # ローカルファイル一覧
@@ -429,8 +431,6 @@ try {
           ##########################
           Get-FileList $TargetPath "*.$($TargetConfig.FileExt)"
 
-          # 共有フォルダのアンマウント
-          Get-PSDrive $TargetConfig.RemoteDrive | Remove-PSDrive
         }
 
         "RemoteCopy" {
@@ -438,12 +438,6 @@ try {
           # 退避処理開始
           ##########################
           if ($ConResult.TcpTestSucceeded) {
-            # 再起動時にドライブが維持されるように、パスワードを保存する
-            cmd.exe /C "cmdkey /add:`"$($TargetConfig.RemoteHost)`" /user:`"$($TargetConfig.RemoteUser)`" /pass:`"$($TargetConfig.RemotePass)`""
-
-            # 共有フォルダをドライブをマウントする
-            $Log.Info("\\$($TargetConfig.RemoteHost)\$($TargetConfig.RemotePath)を$($TargetConfig.RemoteDrive)ドライブにマウントします")
-            New-PSDrive -Name $TargetConfig.RemoteDrive -PSProvider FileSystem -Root "\\$($TargetConfig.RemoteHost)\$($TargetConfig.RemotePath)" -Persist
 
             ##########################
             # ローカルファイル一覧
@@ -517,9 +511,6 @@ try {
             # リモートファイル一覧
             ##########################
             Get-FileList $TargetPath "*.$($TargetConfig.FileExt)"
-
-            # 共有フォルダのアンマウント
-            Get-PSDrive $TargetConfig.RemoteDrive | Remove-PSDrive
           }
         }
 
@@ -527,6 +518,11 @@ try {
           $Log.Error("モード`($($TargetConfig.Mode)`)の指定が誤ってます。")
           break
         }
+      }
+      # 共有フォルダのアンマウント
+      if (-not $MountFlg) {
+        $Log.Info("$($TargetConfig.Title):完了")
+        Get-PSDrive $TargetConfig.RemoteDrive | Remove-PSDrive
       }
       $Log.Info("$($TargetConfig.Title):完了")
     }
@@ -538,6 +534,10 @@ try {
 } catch {
   $Log.Error("処理中にエラーが発生しました。")
   $Log.Error($("" + $Error[0] | Format-List --DisplayError))
-  Get-PSDrive $TargetConfig.RemoteDrive | Remove-PSDrive
+  if (-not $MountFlg) {
+    if (Get-PSDrive -Name $TargetConfig.RemoteDrive -ErrorAction Ignore) {
+      Get-PSDrive $TargetConfig.RemoteDrive | Remove-PSDrive
+    }
+  }
   exit 9 
 }
