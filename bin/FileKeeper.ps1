@@ -199,7 +199,7 @@ try {
           # 共有フォルダをドライブをマウントする
           $SecurePass = ConvertTo-SecureString $TargetConfig.RemotePass -AsPlainText -Force
           $cred =  New-Object System.Management.Automation.PSCredential $TargetConfig.RemoteUser, $SecurePass
-          if ($Result = New-PSDrive -Name $TargetConfig.RemoteDrive -PSProvider FileSystem -Root "\\$($TargetConfig.RemoteHost)\$($TargetConfig.RemotePath)" -Persist -Credential $cred) {
+          if ($Result = New-PSDrive -Name $TargetConfig.RemoteDrive -PSProvider FileSystem -Root "\\$($TargetConfig.RemoteHost)\$($TargetConfig.RemotePath)" -Persist -Credential $cred -ErrorAction Ignore) {
             $Log.Info("\\$($TargetConfig.RemoteHost)\$($TargetConfig.RemotePath)を$($TargetConfig.RemoteDrive)ドライブにマウントしました。")
           } else {
             $Log.Info("共有ディスクのマウントに失敗しました。")
