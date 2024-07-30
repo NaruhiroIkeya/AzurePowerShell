@@ -10,7 +10,7 @@ param (
 ##########################
 ## モジュールのロード
 ##########################
-. .\LogController.ps1
+. C:\Scripts\bin\LogController.ps1
 
 ##########################
 ## 固定値 
@@ -45,7 +45,7 @@ Function Invoke-Command($commandTitle, $commandPath, $commandArguments) {
         StdOut = $Proc.StandardOutput.ReadToEnd()
         StdErr = $Proc.StandardError.ReadToEnd()
         ExitCode = $Proc.ExitCode
-    } | Format-List
+    }
   }
   Catch {
      Exit 9
@@ -69,7 +69,7 @@ if($Stdout -and $Eventlog) {
   $LogFileName = $LogBaseName + ".log"
   $Log = New-Object LogController($($LogFilePath + "\" + $LogFileName), $false, $true, $LogBaseName, $false)
   $Log.DeleteLog($LogCycle)
-  $Log.Info("ログファイル名:$($Log.GetLogInfo())")
+  $Log.Info("LogFileName:$($Log.GetLogInfo())")
 }
 
 ##########################
@@ -80,29 +80,29 @@ try {
   ##########################
   # 制御取得
   ##########################
-  $ConfigPath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath etc -Resolve
+  $ConfigPath = Split-Path $MyInvocation.MyCommand.Path -Parent | Split-Path -Parent | Join-Path -ChildPath conf -Resolve
   $ConfigFilePath = $ConfigPath | Join-Path -ChildPath $ConfigFile
   if (($ConfigFilePath) -and (-not $(Test-Path $ConfigFilePath))) {
-    $Log.Info("制御ファイルパス：" + (Split-Path $ConfigFilePath -Parent))
-    $Log.Error("制御ファイルが存在しません。")
+    $Log.Info("Configuration file path：" + (Split-Path $ConfigFilePath -Parent))
+    $Log.Error("Configuration file does not exist.")
     exit 9 
   } else {
-    $Log.Info("制御ファイルパス：" + (Split-Path $ConfigFilePath -Parent))
-    $Log.Info("制御ファイル名：" + (Get-ChildItem $ConfigFilePath).Name)
+    $Log.Info("Configuration file path：" + (Split-Path $ConfigFilePath -Parent))
+    $Log.Info("Configuration file name：" + (Get-ChildItem $ConfigFilePath).Name)
     if ($(Test-Path $ConfigFilePath)) { $ConfigInfo = [xml](Get-Content $ConfigFilePath) }
     if(-not $ConfigInfo) { 
-      $Log.Error("既定のファイルから制御情報が読み込めませんでした。")
+      $Log.Error("Can not read configuration file.")
       exit 9 
      } 
   }
     
   if ($ConfigInfo) {
     foreach ($TargetConfig in $ConfigInfo.Configuration.Target) {
-      $Log.Info("$($TargetConfig.Title):開始")
-      $Log.Info("$($TargetConfig.HostName)に接続します")
+      $Log.Info("$($TargetConfig.Title):Start")
+      $Log.Info("Testing network connectivity to $($TargetConfig.HostName)")
       $ConResult = Test-NetConnection -ComputerName $TargetConfig.HostName -Port 443 
       if (-not ($ConResult.TcpTestSucceeded)) {
-        $Log.Error("共有ディスクに接続できませんでした。")
+        $Log.Error("Can not access Storage Account")
         $ErrorFlg = $true
         break
       } else {
@@ -117,7 +117,7 @@ try {
         $Log.Info("azcopy_path:$azcopy_path")
         $Log.Info("copy_source:$copy_source")
         $Log.Info("copy_target:$copy_target")
-        $Log.Info("sas:$sas")
+##        $Log.Info("sas:$sas")
         $Log.Info("log_level:$log_level")
         $Log.Info("plan_path:$plan_path")
         $Log.Info("log_path:$log_path")
@@ -130,11 +130,11 @@ try {
         $env:AZCOPY_LOG_LOCATION="$log_path"
 
         $ReturnObj = Invoke-Command $TargetConfig.Title $azcopy_path $("copy ""$copy_source" + "?" + "$sas"" ""$copy_target" + "?" + "$sas"" --overwrite=false --log-level=$log_level")
-        if(0 -eq $ReturnObj.ExitCode) {
-          $Log.Info($ReturnObj.StdOut)
-        } else {
-          $Log.Error($ReturnObj.StdErr)
+        if($ReturnObj.ExitCode) {
+          $Log.Error($ReturnObj.Stdout)
           exit 9
+        } else {
+          $Log.Info($ReturnObj.Stdout)
         }
       }
     }
