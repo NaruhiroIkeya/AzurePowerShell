@@ -28,7 +28,6 @@ param (
 ##########################
 ## モジュールのロード
 ##########################
-Import-Module CredentialManager
 . .\LogController.ps1
 
 ##########################
@@ -93,24 +92,31 @@ Function Get-FileList($Path, $Files) {
 # 期限切れファイルの削除
 Function Remove-ExpiredFiles($Path, $FileExt, $Term) {
 
+  $ErrorFlg = $false
+  $Counter = 1
   $Log.Info("対象フォルダ:$($Path)")
   $Log.Info("ファイルローテーション開始:$($Term)日以前のファイルを削除します。")
-  $ReturnObj = Get-ChildItem -Path $Path -Recurse | Where-Object{($_ -match $("." + $FileExt)) -and  ($_.LastWriteTime -lt (Get-Date).AddDays(-1 * $Term))} 
+  $ReturnObj = Get-ChildItem -Path $Path -Recurse | Where-Object{($_.Name -match $("." + $FileExt)) -and  ($_.CreationTime -lt (Get-Date).AddDays(-1 * $Term)) -and $(! $_.PSIsContainer) } | Sort-Object -Property CreationTime
+  $Log.Info("対象オブジェクト数:$($ReturnObj.Count)")
+  foreach($DeleteFile in $ReturnObj) {
+    if($DeleteFile) {
+      $Log.Info("$("{0:0000}" -f $Counter):ファイル名:$($DeleteFile.FullName):	作成日:$($DeleteFile.CreationTime)")
+      $Counter++
+    } else {
+      $Log.Warm("Null Objects")
+      $ErrorFlg = $true
+    }
+  }
 
   foreach($DeleteFile in $ReturnObj) {
-    $Log.Info("削除対象ファイル:$($DeleteFile.Name)")
-    $ReturnObj = Invoke-Command "forfiles" $env:comspec "/C FORFILES /P `"$Path`" /M *.$FileExt /S /D -$Term /C `"CMD /C IF @isdir==FALSE DEL /Q @path`""
-    if(-not $ReturnObj.ExitCode) {
-      $Log.Info("ファイル削除`r`n$($ReturnObj.StdOut)")
+    if($DeleteFile) {
+      Remove-Item $DeleteFile.FullName -Force -ErrorAction Ignore
     } else {
-      $Log.Warn("$($ReturnObj.StdErr)")
-      return 9
+      $Log.Warm("Null Objects")
+      $ErrorFlg = $true
     }
-  } else {
-    $Log.Warn("$($ReturnObj.StdErr)")
-    return 9
   }
-  return 0
+  if($ErrorFlg) { return 9 } else { return 0 }
 }
 
 ##########################
