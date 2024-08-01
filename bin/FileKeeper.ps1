@@ -28,6 +28,7 @@ param (
 ##########################
 ## モジュールのロード
 ##########################
+Import-Module CredentialManager
 . .\LogController.ps1
 
 ##########################
