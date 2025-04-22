@@ -76,11 +76,11 @@ CD /d %~dp0
 ::      スクリプト本体実行      ::
 ::::::::::::::::::::::::::::::::::
 CALL :__ECHO__ Azure Backup実行処理（%~n0.ps1）を開始します。
-if "%PROCESSOR_ARCHITECTURE%" EQU "x86" (
-    set EXEC_POWERSHELL="C:\Windows\sysnative\WindowsPowerShell\v1.0\powershell.exe"
+IF "%PROCESSOR_ARCHITECTURE%" EQU "x86" (
+    SET EXEC_POWERSHELL="C:\Windows\sysnative\WindowsPowerShell\v1.0\powershell.exe"
 )
-if "%PROCESSOR_ARCHITECTURE%" EQU "AMD64" (
-    set EXEC_POWERSHELL="C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe"
+IF "%PROCESSOR_ARCHITECTURE%" EQU "AMD64" (
+    SET EXEC_POWERSHELL="C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe"
 )
 
 %EXEC_POWERSHELL% -ExecutionPolicy RemoteSigned -NoProfile -inputformat none -command "%~dpn0.ps1 -Stdout %__VMNAME__% %__R_S_CONTAINER__% %__ADD_DAYS__% %__JOB_TIMEOUT__%;exit $LASTEXITCODE" >>"%__LOGFILE__%"

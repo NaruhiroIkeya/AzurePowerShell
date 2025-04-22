@@ -75,16 +75,16 @@ CD /d %~dp0
 ::      スクリプト本体実行      ::
 ::::::::::::::::::::::::::::::::::
 CALL :__ECHO__ Snapshot削除処理（%~n0.ps1）を開始します。
-if "%PROCESSOR_ARCHITECTURE%" EQU "x86" (
-    set EXEC_POWERSHELL="C:\Windows\sysnative\WindowsPowerShell\v1.0\powershell.exe"
+IF "%PROCESSOR_ARCHITECTURE%" EQU "x86" (
+    SET EXEC_POWERSHELL="C:\Windows\sysnative\WindowsPowerShell\v1.0\powershell.exe"
 )
-if "%PROCESSOR_ARCHITECTURE%" EQU "AMD64" (
-    set EXEC_POWERSHELL="C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe"
+IF "%PROCESSOR_ARCHITECTURE%" EQU "AMD64" (
+    SET EXEC_POWERSHELL="C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe"
 )
 
-if "%__RESOURCEGROUPNAME__%" NEQ "" (
+IF "%__RESOURCEGROUPNAME__%" NEQ "" (
   SET __OPTIONS__= -ResourceGroupName %__RESOURCEGROUPNAME__%
-  if "%__VMNAME__%" NEQ "" (
+  IF "%__VMNAME__%" NEQ "" (
     SET __OPTIONS__=%__OPTIONS__% -AzureVMName %__VMNAME__%
   )
 )

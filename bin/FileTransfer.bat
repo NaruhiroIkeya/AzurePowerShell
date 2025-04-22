@@ -84,10 +84,10 @@ CD /d %~dp0
 ::::::::::::::::::::::::::::::::::
 CALL :__ECHO__ ファイル転送処理（%__PS_SCRIPT__%）を開始します。
 if "%PROCESSOR_ARCHITECTURE%" EQU "x86" (
-    set EXEC_POWERSHELL="C:\Windows\sysnative\WindowsPowerShell\v1.0\powershell.exe"
+    SET EXEC_POWERSHELL="C:\Windows\sysnative\WindowsPowerShell\v1.0\powershell.exe"
 )
 if "%PROCESSOR_ARCHITECTURE%" EQU "AMD64" (
-    set EXEC_POWERSHELL="C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe"
+    SET EXEC_POWERSHELL="C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe"
 )
 
 %EXEC_POWERSHELL% -NoProfile -inputformat none -command "%__PS_SCRIPT__% %__CNFFILE__% -Eventlog -Stdout;exit $LASTEXITCODE" >>"%__LOGFILE__%"

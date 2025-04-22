@@ -76,11 +76,11 @@ CD /d %~dp0
 ::      スクリプト本体実行      ::
 ::::::::::::::::::::::::::::::::::
 CALL :__ECHO__ Snapshot作成処理（%~n0.ps1）を開始します。
-if "%PROCESSOR_ARCHITECTURE%" EQU "x86" (
-    set EXEC_POWERSHELL="C:\Windows\sysnative\WindowsPowerShell\v1.0\powershell.exe"
+IF "%PROCESSOR_ARCHITECTURE%" EQU "x86" (
+    SET EXEC_POWERSHELL="C:\Windows\sysnative\WindowsPowerShell\v1.0\powershell.exe"
 )
-if "%PROCESSOR_ARCHITECTURE%" EQU "AMD64" (
-    set EXEC_POWERSHELL="C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe"
+IF "%PROCESSOR_ARCHITECTURE%" EQU "AMD64" (
+    SET EXEC_POWERSHELL="C:\Windows\system32\WindowsPowerShell\v1.0\powershell.exe"
 )
 
 %EXEC_POWERSHELL% -NoProfile -inputformat none -command "%__PS_SCRIPT__% -CreateSnapshot -Reboot -Stdout -AzureVMName %__VMNAME__% -ResourceGroupName %__RESOURCEGROUPNAME__% -ExpireDays %__EXPIRE_DAYS__%;exit $LASTEXITCODE" >>"%__LOGFILE__%"
